@@ -947,6 +947,62 @@ class SurveyEditView extends CollectionView
 
 
 
+################### LOGIN ########################
+
+class User extends StackMob.User
+  
+
+class LoginView extends Backbone.View
+  
+  template: """<div class="container" id="login">
+      <form action="POST" class="form-horizontal">
+      <div class="modal" style="position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;">
+        <div class="modal-header">
+          <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>
+        </div>
+        <div class="modal-body">
+            <fieldset>
+
+              <div class="control-group">
+                <label for="login-input" class="control-label">Login</label>
+                <div class="controls"><input type="text" id="login-input" class="input-xlarge" autofocus /></div>
+              </div>
+              <div class="control-group">
+                <label for="password-input" class="control-label">Hasło</label>
+                <div class="controls"><input type="password" id="password-input" class="input-xlarge" /></div>
+              </div>
+            </fieldset>
+
+        </div>
+        <div class="modal-footer">
+          <input id="login-button" type="submit" class="btn btn-big btn-primary" value="Zaloguj" />
+        </div>
+      </div>
+      </form>
+    </div>"""
+  
+  events:
+    submit: 'submit'
+  
+  submit: (e) =>
+    console.log "submited"
+    e.preventDefault()
+    $('#login-button').button('toggle')
+    user = new User({username: @$('#login-input').val(), password: @$('#password-input').val()})
+    user.login false,
+      success: (u) =>
+        $('#login-button').button('toggle')
+        @trigger 'login', user
+      error: (u, e) =>
+        @$('.control-group').addClass('error')
+        $('#login-button').button('toggle')
+  
+  render: ->
+    @$el.html @template.render()
+    @$('#login-input').focus()
+    @
+
+
 ################### PAGE ROUTER ###################
 
 class App extends Backbone.Router
@@ -963,19 +1019,20 @@ class App extends Backbone.Router
     @$main = $('body')
     @Notifications = new Notifications()
     @Surveys = new Surveys()
-    @Surveys.on 'new', => @navigate 'surveys/new', true
+    @Surveys.on 'new', => @navigate '/surveys/new', true
     @Surveys.on 'show', @onSelectSurvey
     @Surveys.on 'publish', (model) =>
       @Surveys.add model
-      @navigate "surveys/#{model.id}", true
+      @navigate "/surveys/#{model.id}", true
   
   onSelectSurvey: (model) =>
     @Surveys.active = model
-    @navigate "surveys/#{model.id or model.cid}"
+    @navigate "/surveys/#{model.id or model.cid}"
     @showSurvey(model)
   
   setView: (view) ->
     @$main.html(view.render().el)
+    @updateLinks()
   
   notifications: ->
     @setView new NotificationsView({collection: @Notifications})
@@ -1024,16 +1081,31 @@ class App extends Backbone.Router
         @navigate '/surveys', true
   
   index: ->
-    @navigate 'notifications', true
+    @navigate '/notifications', true
     
-  updateLinks: ->
+  updateLinks: =>
     hash = window.location.hash
+    console.log 'hash', hash
+    unless hash.startsWith('#/')
+      hash = '#/' + hash[1..]
+    console.log 'hash', hash
     $("a[href].link").each ->
       href = $(@).attr('href')
       active = hash is href or hash.startsWith(href) and hash.charAt(href.length) is '/'
       $(@).parent().toggleClass 'active', active
 
 $ ->
-  window.app = new App
-  Backbone.history?.start()
+  
+  auth = on
+  
+  if auth
+    loginView = new LoginView()
+    $('body').html loginView.render().el
+    loginView.on 'login', (user) ->
+      console.log 'login', user
+      window.app = new App({user})
+      Backbone.history?.start()
+  else
+    window.app = new App()
+    Backbone.history?.start()
     

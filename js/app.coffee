@@ -12,7 +12,7 @@
 StackMob.init
   appName: "mkampus2"
   clientSubdomain: "mobilefactorysa"
-  apiVersion: 1
+  apiVersion: 0
   
 moment.lang('pl')
 

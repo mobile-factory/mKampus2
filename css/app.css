@@ -182,6 +182,10 @@ footer {
     display: none;
   }
 }
+.form-actions .btn-toolbar {
+  margin-top: 0;
+  margin-bottom: 0;
+}
 .date {
   color: #999;
 }
@@ -196,4 +200,7 @@ footer {
   .notification {
     min-height: 150px;
   }
+}
+.ui-state-highlight {
+  height: 50px;
 }

@@ -29,7 +29,14 @@ do (String) ->
     templateCache[@] or= Handlebars.compile(@)
   
   String::render = (data) ->
-    @template()(data)
+    templateData = _.extend _.clone(window.globals), data
+    @template()(templateData)
+    
+  String::toURL = ->
+    encodeURIComponent(@)
+  
+  String::fromURL = ->
+    decodeURIComponent(@)
 
 ################### HANDLEBARS PARTIALS ###################
   
@@ -53,16 +60,37 @@ partial navbar: """
       <div class="nav-collapse collapse">
         <ul class="nav">
           {{#links}}
-            <li>
+            <li {{#if active}}class="active"{{/if}}>
               <a class="link" href="{{href}}">{{label}}</a>
             </li>
           {{/links}}
+        </ul>
+        <ul class="nav pull-right">
+          {{#if current_user }}
+            <li>
+              <a href="/">
+                <i class="icon-off icon-white"></i>
+                Wyloguj ( {{ current_user }} )
+              </a>
+            </li>
+          {{/if}}
         </ul>
       </div>
     </div>
   </div>
 </div>
 """
+
+helper if_eq: (context, options) ->
+	if context is options.hash.compare
+		options.fn(context)
+	else
+	  options.inverse(context)
+
+helper restaurantNavbar: (context) ->
+  "{{> navbar}}".render links: [
+    {href: '#', label: 'Restauracja', active: true}
+  ]
 
 helper navbar: (context) ->
   "{{> navbar}}".render links: [
@@ -103,13 +131,13 @@ helper header: (title, options) ->
 
 helper items: (id) ->
   """
-    <div class="container">
-      <section>
-      <div class="row" id="{{id}}">
-        ...
-      </div>
-      </section>
+  <div class="container">
+    <section>
+    <div class="row" id="{{id}}">
+      ...
     </div>
+    </section>
+  </div>
   """.render {id}
   
 helper layout: (options) ->
@@ -135,7 +163,74 @@ helper timeSwitch: (time) ->
   </span>
   """.render {time}
 
+################### LOGIN ########################
+
+class User extends StackMob.User
+
+class Users extends StackMob.Collection
+  model: User
+
+class LoginView extends Backbone.View
+
+  template: """<div class="container" id="login">
+      <form action="POST" class="form-horizontal">
+      <div class="modal" style="position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;">
+        <div class="modal-header">
+          <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>
+        </div>
+        <div class="modal-body">
+            <fieldset>
+
+              <div class="control-group">
+                <label for="login-input" class="control-label">Login</label>
+                <div class="controls"><input type="text" id="login-input" class="input-xlarge" autofocus /></div>
+              </div>
+              <div class="control-group">
+                <label for="password-input" class="control-label">Hasło</label>
+                <div class="controls"><input type="password" id="password-input" class="input-xlarge" /></div>
+              </div>
+            </fieldset>
+
+        </div>
+        <div class="modal-footer">
+          <input id="login-button" type="submit" class="btn btn-big btn-primary" value="Zaloguj" />
+        </div>
+      </div>
+      </form>
+      {{{ footer }}}
+    </div>"""
+
+  events:
+    submit: 'submit'
+
+  submit: (e) =>
+    console.log "submited"
+    e.preventDefault()
+    $('#login-button').button('toggle')
+    user = new User({username: @$('#login-input').val(), password: @$('#password-input').val()})
+    user.login false,
+      success: (u) =>
+        # $('#login-button').button('toggle')
+        @trigger 'login', user
+      error: (u, e) =>
+        @$('.control-group').addClass('error')
+        $('#login-button').button('toggle')
+
+  render: ->
+    @$el.html @template.render()
+    @$('#login-input').focus()
+    @
+
+
 ################### BACKBONE EXTENSIONS ###################
+
+class LoadableCollection extends StackMob.Collection
+  load: ->
+    unless @fetchPromise?
+      @fetchPromise = $.Deferred()
+      @fetch success: =>
+        @fetchPromise.resolve(@)
+    @fetchPromise
 
 class CollectionView extends Backbone.View
   initialize: ->
@@ -150,18 +245,23 @@ class CollectionView extends Backbone.View
 
   addAll: =>
     $collection = @$collection or @$el
+    console.log '$collection', $collection
     $.when(@collection).then (collection) =>
+      console.log 'CollectionView addAll from collection', collection, collection.length, @itemView
       $collection.empty()
       collection.each @addOne
 
   addOne: (model) =>
     options = _.extend(_.clone(@options), {model, @collection})
     view = new @itemView options
+    console.log 'view', view
     $collection = @$collection or @$el
     if @options.prepend?
       $collection.prepend view.render().el
     else
       $collection.append view.render().el
+    
+    console.log 'view.el', view.el
 
   render: ->
     console.log 'CollectionView rendered', @
@@ -179,6 +279,7 @@ class AddView extends Backbone.View
 
   add: (event) ->
     @collection.trigger 'new'
+    @trigger 'click'
 
   getPlaceholder: ->
     @options.placeholder or "Dodaj"
@@ -300,7 +401,7 @@ class NotificationsView extends CollectionView
     {{#layout}}
       {{#header "Powiadomienia"}}
         <form action="" id="new-notification-form" class="editable">
-          <textarea name="" id="new-notification-input" rows="1" class="add" placeholder="Nowe powiadomienie"></textarea>
+          <textarea name="" id="new-notification-input" rows="1" class="add" placeholder="Treść nowego powiadomienia"></textarea>
           <div class="form-actions edit">
             <div class="row-fluid">
               <div class="span6">
@@ -397,6 +498,8 @@ class NotificationsView extends CollectionView
 
 ############################# SURVEYS #############################
 
+
+
 class Survey extends StackMob.Model
   schemaName: 'survey'
   
@@ -431,15 +534,11 @@ class Survey extends StackMob.Model
     @fetchQuestionsPromise
     
 
-class Surveys extends StackMob.Collection
+class Surveys extends LoadableCollection
   model: Survey
   
-  load: ->
-    unless @fetchPromise?
-      @fetchPromise = $.Deferred()
-      @fetch success: =>
-        @fetchPromise.resolve(@)
-    @fetchPromise
+  comparator: (survey) ->
+    -survey.get('createddate')
   
 class Question extends StackMob.Model
   schemaName: 'question'
@@ -945,65 +1044,504 @@ class SurveyEditView extends CollectionView
     super
     @
 
+################### INFORMATIONS ########################
 
-
-################### LOGIN ########################
-
-class User extends StackMob.User
+class InformationElement extends StackMob.Model
+  schemaName: 'information_element'
   
-
-class LoginView extends Backbone.View
+  initialize: ->
+    @isOpen = not @id
+    super
   
-  template: """<div class="container" id="login">
-      <form action="POST" class="form-horizontal">
-      <div class="modal" style="position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;">
-        <div class="modal-header">
-          <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>
-        </div>
-        <div class="modal-body">
-            <fieldset>
+  defaults:
+    type: 'text'
+  
+  parse: (data) ->
+    console.log 'InformationElement::parse (data)', data
+    if typeof data is "object"
+      data
+    else
+      super
 
-              <div class="control-group">
-                <label for="login-input" class="control-label">Login</label>
-                <div class="controls"><input type="text" id="login-input" class="input-xlarge" autofocus /></div>
-              </div>
-              <div class="control-group">
-                <label for="password-input" class="control-label">Hasło</label>
-                <div class="controls"><input type="password" id="password-input" class="input-xlarge" /></div>
-              </div>
-            </fieldset>
+class InformationElements extends StackMob.Collection
+  model: InformationElement
+  
+  comparator: (model) ->
+    model.get 'position'
+  
+  parse: (response) ->
+    _(response).reject (model) -> model.is_deleted
 
-        </div>
-        <div class="modal-footer">
-          <input id="login-button" type="submit" class="btn btn-big btn-primary" value="Zaloguj" />
-        </div>
-      </div>
-      </form>
-    </div>"""
+class InformationGroup extends StackMob.Model
+  schemaName: 'information_group'
+  
+  saveInformations: =>
+    @informations.each (model) =>
+      model.save {survey: @id}
+  
+  getInformations: ->
+    unless @fetchElementsPromise?
+      @fetchElementsPromise = $.Deferred()
+      @informations = new InformationElements()
+      if @id?
+        fetchMyElements = new StackMob.Collection.Query()
+        console.log '@id', @id
+        fetchMyElements.equals('information_group', @id)
+        @informations.query(fetchMyElements)
+        console.log 'waiting for reset', @informations
+        @informations.on 'all', (event) =>
+          console.log 'informations event', event
+        @informations.on 'reset', =>
+          console.log 'reset', @informations
+          @fetchElementsPromise.resolve(@informations)
+      else
+        @fetchElementsPromise.resolve(@informations)
+    @fetchElementsPromise
+
+class InformationGroups extends LoadableCollection
+  model: InformationGroup
+
+class SelectableView extends Backbone.View
+  
+  labelAttribute: 'name'
+  
+  template: -> """
+    <div class="selectable span4" data-id="{{ id }}">
+      <p class="date">{{{ timeSwitch createddate }}}</p>
+      <p class="content">
+        {{ #{@labelAttribute} }}
+      </p>
+    </div>
+    """
+  
+  initialize: ->
+    @model.on 'change', @render
+    @model.on 'reset', @render
+    @model.on 'sync', @render
   
   events:
-    submit: 'submit'
+    'click': 'triggerSelect'
   
-  submit: (e) =>
-    console.log "submited"
-    e.preventDefault()
-    $('#login-button').button('toggle')
-    user = new User({username: @$('#login-input').val(), password: @$('#password-input').val()})
-    user.login false,
-      success: (u) =>
-        $('#login-button').button('toggle')
-        @trigger 'login', user
-      error: (u, e) =>
-        @$('.control-group').addClass('error')
-        $('#login-button').button('toggle')
+  triggerSelect: =>
+    @model?.trigger 'select', @model
+    @trigger 'select', @model
+    
+    #idea: event aggregator injection
+    # if aggregator = @options.events               
+    #   aggregator.trigger 'select', @
+  
+  render: =>
+    @$el.html @template().render _.extend(@model.toJSON(), {id: @model.id})
+    window.app.updateLinks()
+    @
+  
+class InformationGroupView extends SelectableView
+
+class InformationElementView extends Backbone.View
+  
+  templateShow:
+    text: -> """<p>{{ text }}</p>"""
+    title: -> """<h3>{{ title }}</h3>"""
+    image: -> """<img src="{{ image }}"/>"""
+  
+  templateEdit:
+    text: -> """<textarea class="text-input add" type="text" rows="5" autofocus="autofocus" placeholder="Treść nowego akapitu">{{ text }}</textarea>"""
+    title: -> """<input class="title-input add" type="text" autofocus="autofocus" placeholder="Treść nowego tytułu" value="{{ title }}"/>"""
+    image: -> """<img src="{{ image }}"/>"""
+  
+  template: -> """
+    <section class="editable sortable {{#if isOpen}} active {{/if}}" data-sortable-id="{{information_element_id}}">
+      <div class="configurable show">
+        #{if template = @templateShow[@model.get('type')] then template()}
+      </div>
+      <div class="add-section edit">
+        <form class="edit-form" action="">
+          #{if template = @templateEdit[@model.get('type')] then template()}
+          <div class="form-actions">
+            <button type="submit" class="save-button btn btn-primary btn-large pull-right">
+              <i class="icon-pencil icon-white"></i>
+              Zapisz element
+            </button>
+            <button class="destroy-button btn btn-large">
+              <i class="icon-remove"></i>
+              Usuń element
+            </button>
+            
+          </div>
+        </form>
+      </div>
+    </section>"""
+  
+  events:
+    'click .show': 'open'
+    'click .save-button': 'save'
+    'submit': 'save'
+    'click .destroy-button': 'destroy'
+  
+  initialize: ->
+    @model.on 'change', @render, @
+    @model.on 'sync', @render, @
+  
+  open: ->
+    @model.isOpen = true
+    @render()
+  
+  save: (event) ->
+    event.preventDefault()
+    type = @model.get('type')
+    if type is "text"
+      @model.set text: @$(".text-input").val()
+    else if type is "title"
+      @model.set title: @$(".title-input").val()
+    @model.save()
+    @close()
+  
+  destroy: (event) ->
+    event.preventDefault()
+    @model.save is_deleted: true
+    @model.collection.remove @model
+    @remove()
+  
+  close: ->
+    @model.isOpen = false
+    @render()
   
   render: ->
-    @$el.html @template.render()
-    @$('#login-input').focus()
+    @$el.html @template().render _.extend(@model.toJSON(), {isOpen: @model.isOpen})
+    @
+
+class InformationGroupShowView extends CollectionView
+  
+  titlePlaceholder: "Tytuł nowego działu"
+  labelAttribute: 'name'
+  
+  itemView: InformationElementView
+  
+  initialize: ->
+    @collection = @model.getInformations()
+    super
+  
+  events:
+    'click #survey-submit': 'save'
+    'click .create-text': 'createText'
+    'click .create-title': 'createTitle'
+    'sortstop #elements': 'sort'
+    
+  sort: (event) ->
+    console.log 'sort stop', event
+    $.when(@collection).then (collection) =>
+      @$('.sortable').each (index, element) ->
+        id = $(element).data('sortable-id')
+        collection.get(id).save({position: index})
+  
+  createText: (event) ->
+    event.preventDefault()
+    $.when(@model.getInformations()).then (informations) =>
+      newPosition = _(informations.pluck('position').sort()).last() + 1
+      console.log newPosition
+      informations.add({type: 'text', position: newPosition, information_group: @model.id})
+  
+  createTitle: (event) ->
+    event.preventDefault()
+    $.when(@model.getInformations()).then (informations) =>
+      newPosition = _(informations.pluck('position').sort()).last() + 1
+      console.log newPosition
+      informations.add({type: 'title', position: newPosition, information_group: @model.id})
+  
+  persist: ->
+    @model.set name: @$('#title-input').val()
+  
+  save: ->
+    @persist()
+    @model.save()
+  
+  template: -> """
+    <div class="editable active" id="title-section">
+      <div class="add-section edit">
+        <form id="title-edit" action="">
+          <input id="title-input" type="text" class="input-title add edit" placeholder="#{@titlePlaceholder}" autofocus="autofocus" value="{{ #{@labelAttribute} }}"/>
+        </form>
+      </div>
+
+      <div id="title-show" class="category show">
+        <h1 id="title">{{ #{@labelAttribute} }}</h1>
+      </div>
+    </div>
+    
+    <div id="elements"></div>
+      
+    <div class="form-actions section">
+      
+      <div class="btn-toolbar pull-right">
+        
+        <div class="btn-group">
+          
+          <button class="create-text btn btn-large">
+            <i class="icon-align-left"></i>
+            Dodaj akapit
+          </button>
+          
+          <button class="btn btn-large dropdown-toggle" data-toggle="dropdown">
+            <div class="caret"></div>
+          </button>
+          
+          <ul class="dropdown-menu">
+            <li>
+              <a class="create-title" href="#"><i class="icon-bookmark"></i> Dodaj tytuł</a>
+            </li>
+            <li>
+              <a class="create-text" href="#"><i class="icon-align-left"></i> Dodaj paragraf</a>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="btn-group">
+          <button id="survey-submit" class="btn btn-large btn-primary top-level-actions">
+            <i class="icon-ok icon-white"></i>
+            Zapisz
+          </button>
+        </div>
+      </div>
+      
+      <button class="destroy btn btn-large">
+        <i class="icon-remove"></i>
+        Usuń
+      </button>
+    </div>
+    """
+  
+  render: ->
+    @$el.html @template().render @model.toJSON()
+    @$collection = @$('#elements')
+    @$collection.sortable({
+    })
+    @$collection.disableSelection()
+    super
+
+################### PLACES ###################
+
+class Place extends StackMob.Model
+  schemaName: 'location'
+
+class Places extends LoadableCollection
+  model: Place
+  
+  parse: (response) ->
+    _(response).reject (model) -> model.is_deleted
+
+class PlaceView extends SelectableView
+
+class PlaceShowView extends Backbone.View
+  
+  labelAttribute: 'name'
+  titlePlaceholder: 'Nazwa nowego miejsca'
+  
+  template: -> """
+    <div id="title-section">
+      <div class="add-section">
+        <form id="title-edit" action="">
+          <input type="text" class="input-title add edit" placeholder="#{@titlePlaceholder}" autofocus="autofocus" value="{{ #{@labelAttribute} }}"/>
+        </form>
+      </div>
+    </div>
+    
+    <div id="elements">
+    </div>
+    
+    <section class="item">
+      <form action="#" class="form-horizontal">
+        <div class="row-fluid">
+          <div class="span12">
+            <div class="control-group">
+              <label for="" class="control-label">Opis</label>
+              <div class="controls"><textarea class="span12 input-description">{{ description }}</textarea></div>
+            </div>
+            <div class="control-group">
+              <label for="" class="control-label">Szerokość geograficzna</label>
+              <div class="controls"><input type="text" class="span6 input-latitude" value="{{ latitude }}" placeholder="51.110195"/></div>
+            </div>
+            <div class="control-group">
+              <label for="" class="control-label">Długość geograficzna</label>
+              <div class="controls"><input type="text" class="span6 input-longitude" value="{{ longitude }}" placeholder="17.031404"/></div>
+            </div>
+          </div>
+        </div>
+        
+      </form>
+    </section>
+    
+    
+    <div id="elements"></div>
+      
+    <div class="form-actions section">
+      
+      <button class="destroy btn btn-large">
+        <i class="icon-remove"></i>
+        Usuń
+      </button>
+      
+      <button class="save btn btn-large btn-primary pull-right">
+        <i class="icon-ok icon-white"></i>
+        Zapisz
+      </button>
+    </div>
+    """
+  
+  events:
+    'click .save': 'save'
+    'click .destroy': 'destroy'
+  
+  initialize: ->
+    @model.on 'change', @render
+    @model.on 'reset', @render
+  
+  save: (e) =>
+    e.preventDefault()
+    console.log 'save'
+    attributes =
+      name: @$('.input-title').val()
+      description: @$('.input-description').val()
+      latitude: Number(@$('.input-latitude').val())
+      longitude: Number(@$('.input-longitude').val())
+    @model.set attributes
+    @trigger 'save', @model
+  
+  destroy: (e) =>
+    e.preventDefault()
+    console.log 'destroy'
+    @model.set is_deleted: true
+    @trigger 'destroy', @model
+  
+  render: =>
+    @$el.html @template().render @model.toJSON()
+    @
+
+################### RESTAURANTS ###################
+
+class RestaurantUser extends StackMob.User
+  
+  defaults:
+    role: "restaurant"
+  
+  validate: (attrs) ->
+    return "role: restaurant" if attrs.role isnt "restaurant"
+    return "Nazwa new zabroniona" if attrs.username is "new"
+
+class RestaurantUsers extends LoadableCollection
+  model: RestaurantUser
+  
+  parse: (response) ->
+    _(response).reject (model) -> model.is_deleted or model.role isnt "restaurant"
+
+class RestaurantUserView extends SelectableView
+  labelAttribute: 'username'
+
+class RestaurantUserShowView extends Backbone.View
+  labelAttribute: 'username'
+  titlePlaceholder: 'Nazwa nowej restauracji'
+  
+  template: -> """
+    <div id="title-section">
+      <div class="add-section">
+        <input type="text" class="input-title add edit" {{#if #{@labelAttribute} }}disabled{{/if}} placeholder="#{@titlePlaceholder}" autofocus="autofocus" value="{{ #{@labelAttribute} }}"/>
+      </div>
+    </div>
+    
+    <section class="item row-fluid">
+      <div class="span12 form-horizontal">
+        <legend>
+          Dedykowany użytkownik
+          <small>mogący aktualizować dane teleadresowe i menu restauracji</small>
+        </legend>
+        <div class="control-group">
+          <label for="" class="control-label">Identyfikator</label>
+          <div class="controls"><input type="text" disabled class="span12 input-username" value="{{ #{@labelAttribute} }}"/></div>
+        </div>
+        
+        <div class="control-group">
+          <label for="" class="control-label">Hasło</label>
+          <div class="controls"><input type="password" class="span12 input-password"/></div>
+        </div>
+      
+        <div class="control-group">
+          <label for="" class="control-label">Hasło ponownie</label>
+          <div class="controls"><input type="password" class="span12 input-password-confirmation"/></div>
+        </div>
+        
+        
+      </div>
+    </section>
+      
+    <div class="form-actions section">
+      
+      <button class="destroy btn btn-large">
+        <i class="icon-remove"></i>
+        Usuń
+      </button>
+      
+      <button class="save btn btn-large btn-primary pull-right">
+        <i class="icon-ok icon-white"></i>
+        Zapisz
+      </button>
+    </div>
+    """
+  
+  events:
+    'click .save': 'save'
+    'click .destroy': 'destroy'
+    'keyup .input-title': 'updateName'
+
+  initialize: ({@user}) ->
+    @model.on 'change', @render
+    @model.on 'reset', @render
+    
+  
+  updateName: (e) =>
+    @$('.input-username').val(@$('.input-title').val())  
+  
+  save: (e) =>
+    e.preventDefault()
+    console.log 'save'
+    
+    if @model.isNew()
+      username = @$('.input-title').val()
+      unless username
+        alert('Musisz podać nazwę restauracji')
+        @$('.input-title').focus()
+        return
+    else
+      username = @model.get('username')
+      # oldPassword = @$('.input-password-old').val()
+      # alert('Musisz podać stare hasło')
+      # @$('.input-password-old').focus()
+      # return
+      
+    password = @$('.input-password').val()
+    unless password
+      alert('Musisz podać hasło użytkownika')
+      @$('.input-password').focus()
+      return
+    passwordConfirmation = @$('.input-password-confirmation').val()
+    if password isnt passwordConfirmation
+      alert('Oba hasła muszą być jednakowe')
+      @$('.input-password-confirmation').focus()
+      return
+    
+    @model.set {username, password}
+    
+    @trigger 'save', @model, username, password
+
+  destroy: (e) =>
+    e.preventDefault()
+    console.log 'destroy'
+    @trigger 'destroy', @model
+  
+  render: =>
+    @$el.html @template().render @model.toJSON()
     @
 
 
-################### PAGE ROUTER ###################
+################### Admin Router ###################
 
 class App extends Backbone.Router
   
@@ -1013,17 +1551,37 @@ class App extends Backbone.Router
     'surveys': 'surveys'
     'surveys/new': 'newSurvey'
     'surveys/:id': 'showSurveyById'
+    'informations': 'informations'
+    'informations/:id': 'informations'
+    'map': 'map'
+    'map/:id': 'map'
+    'restaurants': 'restaurants'
+    'restaurants/:id*': 'restaurants'
    
   initialize: ->
     @on 'all', @updateLinks
     @$main = $('body')
+    
     @Notifications = new Notifications()
+    
     @Surveys = new Surveys()
     @Surveys.on 'new', => @navigate '/surveys/new', true
     @Surveys.on 'show', @onSelectSurvey
     @Surveys.on 'publish', (model) =>
       @Surveys.add model
       @navigate "/surveys/#{model.id}", true
+    
+    @InformationGroups = new InformationGroups()
+    @InformationGroups.on 'select', (model) =>
+      @navigate "/informations/#{model.id}", true
+    
+    @Places = new Places()
+    @Places.on 'select', (model) =>
+      @navigate "/map/#{model.id}", true
+    
+    @RestaurantUsers = new RestaurantUsers()
+    @RestaurantUsers.on 'select', (model) =>
+      @navigate "/restaurants/#{model.id}", true
   
   onSelectSurvey: (model) =>
     @Surveys.active = model
@@ -1041,7 +1599,7 @@ class App extends Backbone.Router
   surveys: ->
     collection = @Surveys
     collection.active = null
-    listView = new CollectionView({collection, itemView: SurveyView, prepend: true})
+    listView = new CollectionView({collection, itemView: SurveyView})
     addView = new AddView({collection, placeholder: 'Tytuł nowej ankiety'})
     view = new MenuLayout({title: 'Ankiety', listView, addView})
     @setView view
@@ -1054,17 +1612,18 @@ class App extends Backbone.Router
     # $.when(@Surveys.load()).then (collection) =>
     #   collection.add model
     mainView = new SurveyEditView({model})
-    listView = new CollectionView({collection, itemView: SurveyView, prepend: true, active: model})
+    listView = new CollectionView({collection, itemView: SurveyView, active: model})
     view = new SidebarLayout({title: 'Ankiety', backLink: '#/surveys', mainView, listView})
     @setView view
     collection.load()
     mainView.openTitle()
     
-  showSurvey: (model) =>  
+  showSurvey: (model) => 
+    window.model = model 
     collection = @Surveys
     console.log 'showSurvey', model
     mainView = if model.id? then new SurveyShowView({model}) else new SurveyEditView({model})
-    listView = new CollectionView({collection, itemView: SurveyView, prepend: true})
+    listView = new CollectionView({collection, itemView: SurveyView})
     view = new SidebarLayout({title: 'Ankiety', backLink: '#/surveys', mainView, listView})
     @setView view
     # @Surveys.load()
@@ -1080,32 +1639,425 @@ class App extends Backbone.Router
       else
         @navigate '/surveys', true
   
+  informations: (id) =>
+    collection = @InformationGroups
+    
+    listView = new CollectionView({collection, itemView: InformationGroupView})
+    
+    if id? # pokaż dany element
+      if id is 'new'
+        window.model = model = new InformationGroup
+        model.on 'sync', =>
+          collection.add model
+        mainView = new InformationGroupShowView({model})
+        view = new SidebarLayout({title: 'Informacje', backLink: '#/informations', mainView, listView})
+        @setView view
+        collection.load()
+      else
+        $.when(collection.load()).then (collection) =>
+          if window.model = model = collection.get(id)
+            console.log 'existing information', model
+            mainView = new InformationGroupShowView({model})
+            view = new SidebarLayout({title: 'Informacje', backLink: '#/informations', mainView, listView})
+            @setView view
+          else
+            console.warn "Nie ma elementu o identyfikatorze #{id}. Przekierowuję do listy elementów."
+            @navigate '/informations', true
+    else # pokaż listę elementów
+      addView = new AddView({collection, placeholder: 'Tytuł nowego działu'})
+      addView.on 'click', =>
+        @navigate('informations/new', true)
+      view = new MenuLayout({title: 'Informacje', listView, addView})
+      console.log 'info'
+      @setView view
+      collection.load()
+    
+  map: (id) =>
+    collection = @Places
+
+    listView = new CollectionView({collection, itemView: PlaceView})
+    
+    if id is "new" # utwórz nowy element
+      model = new Place()
+      mainView = new PlaceShowView({model})
+      view = new SidebarLayout({title: 'Mapa', backLink: '#/map', mainView, listView})
+      @setView view
+      mainView.on 'save', (model) =>
+        collection.create model
+      mainView.on 'destroy', (model) =>
+        @navigate "/map", true
+      model.on 'sync', =>
+        @navigate "/map/#{model.id}", true
+    else if id? # pokaż dany element
+      $.when(collection.load()).then (collection) =>
+        if model = collection.get(id)
+          console.log 'existing place', model
+          mainView = new PlaceShowView({model})
+          mainView.on 'save', (model) =>
+            model.save()
+          mainView.on 'destroy', (model) =>
+            model.save()
+            collection.remove(model)
+            @navigate "/map", true
+          view = new SidebarLayout({title: 'Mapa', backLink: '#/map', mainView, listView})
+          @setView view
+        else
+          console.warn "Nie ma elementu o identyfikatorze #{id}. Przekierowuję do listy elementów."
+          @navigate '/map', true
+    else # pokaż listę elementów
+      addView = new AddView({collection, placeholder: 'Nazwa nowego miejsca'})
+      addView.on 'click', => @navigate '/map/new', true
+      view = new MenuLayout({title: 'Mapa', listView, addView})
+      @setView view
+      collection.load()
+  
+  restaurants: (id) =>
+    
+    # id = id.fromURL()
+    
+    collection = @RestaurantUsers
+    
+    title = "Restauracje"
+    
+    placeholder = "Nazwa nowej restauracji"
+    
+    path = "/restaurants"
+    
+    ShowView = RestaurantUserShowView
+    
+    MenuItemView = RestaurantUserView
+    
+    listView = new CollectionView({collection, itemView: MenuItemView})
+
+    if id is "new" # utwórz nowy element
+      model = new RestaurantUser({username: undefined})
+      mainView = new ShowView({model, collection})
+      view = new SidebarLayout({title, backLink: "##{path}", mainView, listView})
+      @setView view
+      mainView.on 'save', (model) =>
+        collection.create model
+      mainView.on 'destroy', (model) =>
+        #TODO delete restaurant as well
+        model.destroy()
+        @navigate path, true
+      model.on 'sync', =>
+        @navigate "#{path}/#{model.id.toURL()}", true
+            
+    else if id? # pokaż dany element
+      $.when(collection.load()).then (collection) =>
+        if model = collection.get(id)
+          mainView = new ShowView({model})
+          mainView.on 'save', (model, username, password) =>
+            model.destroy success: =>
+              collection.create {username, password}, success: =>
+                console.log 'after creation'
+                @navigate "#{path}/#{model.id.toURL()}", true
+              
+          mainView.on 'destroy', (model) =>
+            # collection.remove model
+            model.destroy()
+            @navigate path, true
+            #TODO usunięcie restauracji
+            $.when(@Restaurants.load()).then (restaurants) =>
+              if restaurant = restaurants.find((r) -> r.get('name') is model.id)
+                restaurant.save({is_deleted: true})
+            
+          view = new SidebarLayout({title, backLink: "##{path}", mainView, listView})
+          @setView view
+        else
+          console.warn "Nie ma elementu o identyfikatorze #{id}. Przekierowuję do listy elementów."
+          @navigate path, true
+    else # pokaż listę elementów
+      addView = new AddView({collection, placeholder})
+      addView.on 'click', => @navigate "#{path}/new", true
+      view = new MenuLayout({title, listView, addView})
+      @setView view
+    
+    collection.load()
+  
   index: ->
     @navigate '/notifications', true
     
   updateLinks: =>
     hash = window.location.hash
-    console.log 'hash', hash
     unless hash.startsWith('#/')
       hash = '#/' + hash[1..]
-    console.log 'hash', hash
     $("a[href].link").each ->
       href = $(@).attr('href')
       active = hash is href or hash.startsWith(href) and hash.charAt(href.length) is '/'
       $(@).parent().toggleClass 'active', active
+    
+    $("[data-id]").each ->
+      parts = hash.split('/')
+      id = parts[parts.length-1]
+      $el = $(@)
+      $el.toggleClass 'active', $el.data('id') is id
 
+############################### Restaurant Router ###############################
+
+class Restaurant extends StackMob.Model
+  schemaName: 'restaurant'
+
+class Restaurants extends StackMob.Collection
+  model: Restaurant
+  
+  getById: (id, callback) ->
+    q = new Restaurants.Query()
+    q.equals('restaurant_id', id)
+    @query q
+    , success: (collection) =>
+      callback(null, collection.first())
+    , error: (e) =>
+      callback(e)
+
+class MenuItem extends StackMob.Model
+  schemaName: 'menu_item'
+  
+  validate: (attrs) ->
+    return "Musisz podać nazwę" unless attrs.name
+    return "Musisz podać cenę" unless attrs.price
+
+class MenuItems extends StackMob.Collection
+  model: MenuItem
+  
+  comparator: (menuItem) ->
+    a = (if menuItem.get('is_featured') then -1000 else 0) + menuItem.get('price')
+    console.log 'a', a
+    a
+  
+  defaults:
+    is_featured: false
+  
+  getByRestaurantId: (id, callback) ->
+    q = new MenuItems.Query()
+    q.equals('restaurant', id)
+    @query q
+    , success: (collection) =>
+      callback(null, collection)
+    , error: (e) =>
+      callback(e)
+
+class RestaurantMenuItemView extends Backbone.View
+  template: -> """
+    <section class="menu-item editable {{#if name}} {{else}} active {{/if}}">
+      <div class="configurable show">
+        <h3>
+          {{#if is_featured}}
+            <i class="icon-star"></i>
+          {{/if}}
+          {{ name }}
+          <small>{{ price }} zł</small>
+        </h3>
+        <p>{{ description }}</p>
+      </div>
+      <div class="row-fluid edit">
+        <form class="form-horizontal span12 item">
+          
+            
+            <div class="control-group">
+              <label for="" class="control-label">Nazwa</label>
+              <div class="controls"><input type="text" class="span12 input-name" value="{{ name }}"/></div>
+            </div>
+            
+            <div class="control-group">
+              <label for="" class="control-label">Cena</label>
+              <div class="controls"><input type="text" class="span12 input-price" value="{{ price }}"/></div>
+            </div>
+            
+            <div class="control-group">
+              <label for="" class="control-label">Opis</label>
+              <div class="controls"><input type="text" class="span12 input-description" value="{{ description }}"/></div>
+            </div>
+            
+            <div class="control-group">
+              <label for="" class="control-label"><i class="icon-star"></i></label>
+              <div class="controls">
+                <label class="checkbox">
+                  <input type="checkbox" class="span12 input-featured" {{#if is_featured}}checked{{/if}}/>
+                </label>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-large save pull-right">
+              <i class="icon-ok icon-white"></i>
+              Zapisz
+            </button>
+
+        </form>
+      </div>
+    </section>
+  """
+  
+  events:
+    'click .show': 'edit'
+    'click .save': 'save'
+    'submit form': 'save'
+  
+  edit: (e) =>
+    @$('section').addClass 'active'
+  
+  save: (e) =>
+    e.preventDefault()
+    @model.set
+      name: @$('.input-name').val()
+      description: @$('.input-description').val()
+      price: Number(@$('.input-price').val())
+      is_featured: !! @$('.input-featured').attr('checked')
+      restaurant: @options.restaurant
+    @model.save()
+  
+  initialize: ->
+    @model.on 'change', @render
+  
+  render: =>
+    console.log 'is_featured', @model.get('is_featured')
+    @$el.html @template().render @model.toJSON()
+    @
+
+class RestaurantView extends CollectionView
+  
+  itemView: RestaurantMenuItemView
+  
+  template: -> """
+    {{{ restaurantNavbar }}}
+    
+    <div class="container">
+      
+      <div class="row">
+        <div class="span6">
+            <div class="category">
+              <h1>
+                {{ name }}
+                <small>Informacje o restauracji</small>
+              </h1>
+            </div>
+          <form id="restaurant-info-form">
+          <section class="row-fluid item">
+            <div class="span12 form-horizontal">
+             
+              <div class="control-group">
+                <label for="" class="control-label">Nazwa</label>
+                <div class="controls"><input type="text" disabled class="span12" value="{{ name }}"/></div>
+              </div>
+
+              <div class="control-group">
+                <label for="" class="control-label">Adres</label>
+                <div class="controls"><input type="text" class="span12 input-address" value="{{ address }}"/></div>
+              </div>
+              
+              <div class="control-group">
+                <label for="" class="control-label">Telefon</label>
+                <div class="controls"><input type="text" class="span12 input-phone" value="{{ phone }}"/></div>
+              </div>
+              
+              <div class="control-group">
+                <label for="" class="control-label">Strona www</label>
+                <div class="controls"><input type="text" class="span12 input-url" value="{{ url }}"/></div>
+              </div>
+            </div>
+          </section>
+          <div class="form-actions section">
+            <button class="btn btn-primary btn-large pull-right save">
+              <i class="icon-ok icon-white"></i>
+              Zapisz
+            </button>
+          </div>
+          </form>
+        </div>
+        <div class="span6">
+            <div class="category">
+              <h1>
+                Menu
+              </h1>
+            </div>
+          
+          <div id="menu" class="clearfix">
+            <section class="item">
+              Brak pozycji menu
+            </section>
+          </div>          
+          <div class="form-actions section">
+            <button class="btn btn-primary btn-large pull-right create">
+              <i class="icon-plus icon-white"></i>
+              Dodaj do menu
+            </button>
+          </div>
+        </div>
+      </div>
+      {{{footer}}}
+    </div>"""
+  
+  initialize: ->
+    console.log 'RestaurantView', @model
+    @model.on 'change', @render
+    @model.on 'reset', @render
+    super
+    
+  events:
+    'click .save': 'save'
+    'submit #restaurant-info-form': 'save'
+    'click .create': 'create'
+  
+  save: (e) =>
+    e.preventDefault()
+    console.log 'save'
+    @model.set
+      address: @$('.input-address').val()
+      phone: @$('.input-phone').val()
+      url: @$('.input-url').val()
+    @model.save()
+  
+  create: (e) =>
+    e.preventDefault()
+    console.log '@collection', @collection
+    @collection.create new MenuItem
+  
+  render: =>
+    @$el.html @template().render @model.toJSON()
+    @$collection = @$('#menu')
+    console.log @$collection
+    super
+  
 $ ->
+  window.globals = {}
   
-  auth = on
+  displayRestaurantPanelById = (id, user) ->
+    new Restaurants().getById id, (error, model) =>
+      if error
+        console.error "Nie mogę ściągnąć restauracji o id #{id}", error
+      else
+        unless model
+          model = new Restaurant({restaurant_id: id, name: id})
+          model.create()
+        new MenuItems().getByRestaurantId id, (e, collection) ->
+          if e
+            console.error "Nie mogę ściągnąć menu dla restauracji o id #{id}", e
+          else
+            view = new RestaurantView({model, collection, restaurant: id})
+            $('body').html view.render().el
   
-  if auth
-    loginView = new LoginView()
-    $('body').html loginView.render().el
-    loginView.on 'login', (user) ->
-      console.log 'login', user
-      window.app = new App({user})
+  bazylia = off
+  
+  auth = off
+  
+  if bazylia
+    window.globals.current_user = "Bazylia"
+    displayRestaurantPanelById 'Bazylia', new User({username: "Bazylia", role: "restaurant", restaurant: "Bazylia"})
+  else  
+    if auth
+      loginView = new LoginView({el: $('body')})
+      loginView.render()
+      loginView.on 'login', (user) ->
+        window.globals.current_user = user.get('username')
+        console.log 'login', user
+        user.fetch success: =>
+          if user.get('role') is "restaurant"
+            id = user.id
+            displayRestaurantPanelById id, user
+          else # admin
+            window.app = new App({user})
+            Backbone.history?.start()
+    else
+      window.app = new App()
       Backbone.history?.start()
-  else
-    window.app = new App()
-    Backbone.history?.start()
     

@@ -1,5 +1,5 @@
 @import 'bootstrap.css'
-@import 'bootstrap-responsive.css'
+// @import 'bootstrap-responsive.css'
 @import 'nib/vendor'
 
 ////////////////// VARIABLES //////////////////
@@ -27,6 +27,13 @@ h3 > i
 .editable.active .show, .editable:not(.active) .edit
   display none
 
+.form-actions.compact
+  margin-top 0px
+  margin-bottom 0px
+
+.compact-bottom
+  margin-bottom 0px
+
 .compact
   .form-actions
     margin-top 0px
@@ -47,19 +54,7 @@ h3 > i
   @extend .slot
   padding-top 30px
   padding-bottom 20px
-  
-@media (min-width: 768px)
-  .item-view
-    .category
-      padding-bottom 35px
 
-@media (max-width: 767px)
-  .category
-    padding-top 20px
-    // padding-bottom 0
-    // background-color #fff
-    border-bottom 1px solid #ddd
-    margin-bottom -1px
 
 .item
   @extend .slot
@@ -171,25 +166,8 @@ h1.add
 
 ///////// NO MARGINS /////////
 
-@media (min-width: 768px)
-  .navbar-inner > .container
-    padding-left 20px
-
 .navbar-fixed-top
   margin-bottom 0
-
-@media (min-width: 980px)
-  body
-    padding-top 40px
-
-@media (max-width: 767px)
-  body
-    padding-left 0
-    padding-right 0
-  
-    .navbar-fixed-top
-      margin-left 0
-      margin-right 0
 
 ///////// /NO MARGINS /////////
   
@@ -221,9 +199,46 @@ footer
   // margin-top: -1px
   // background-color: #fff
 
-@media (max-width: 767px)
-  footer
-    display none
+
+////////////////////// RESPONSIVE /////////////////////////////
+
+// @media (min-width: 768px)
+.item-view
+  .category
+    padding-bottom 35px
+
+// @media (max-width: 767px)
+//   .category
+//     padding-top 20px
+//     // padding-bottom 0
+//     // background-color #fff
+//     border-bottom 1px solid #ddd
+//     margin-bottom -1px
+
+// @media (max-width: 767px)
+//   footer
+//     display none
+
+// @media (min-width: 980px)
+body
+  padding-top 40px
+
+// @media (max-width: 767px)
+//   body
+//     padding-left 0
+//     padding-right 0
+// 
+//     .navbar-fixed-top
+//       margin-left 0
+//       margin-right 0
+
+// @media (min-width: 768px)
+.navbar-inner > .container
+  padding-left 20px
+
+// @media (min-width: 768px)
+.notification
+  min-height: 150px
 
 ///////////////////// FORMS /////////////////////
 
@@ -255,10 +270,6 @@ footer
 .notification
   @extend .item
 
-@media (min-width: 768px)
-  .notification
-    min-height: 150px
-  
 
 ////////////////// SURVEYS //////////////////
 
@@ -266,10 +277,21 @@ footer
   @extend .item
 
 
-////////////////// SORTABLE ///////////////////
-.ui-state-highlight
-  height: 50px
-  // background-color #eee
-  
+////////////////// Sync placeholders ///////////////////
 
-////////////////// /SORTABLE ///////////////////
+section.waiting.editable
+  background url('http://jqueryui.com/themeroller/images/?new=eeeeee&w=40&h=40&f=png&q=100&fltr[]=over|textures/08_diagonals_thick.png|0|0|90red')
+  .configurable, form
+    background url('http://jqueryui.com/themeroller/images/?new=eeeeee&w=40&h=40&f=png&q=100&fltr[]=over|textures/08_diagonals_thick.png|0|0|90red')
+  
+////////////////// /Sync placeholders ///////////////////
+
+////////////////// Informations ///////////////////
+
+.info-label
+  color #666
+  padding-left 10px
+  min-width 100px
+  display inline-block
+
+////////////////// /Informations ///////////////////

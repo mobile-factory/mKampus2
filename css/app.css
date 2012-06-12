@@ -1,5 +1,4 @@
 @import 'bootstrap.css';
-@import 'bootstrap-responsive.css';
 h3 > i {
   margin-top: 4px;
 }
@@ -17,6 +16,13 @@ h3 > i {
 .editable.active .show,
 .editable:not(.active) .edit {
   display: none;
+}
+.form-actions.compact {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+.compact-bottom {
+  margin-bottom: 0px;
 }
 .compact .form-actions,
 .add-section form .form-actions {
@@ -49,18 +55,6 @@ textarea.add,
 .category {
   padding-top: 30px;
   padding-bottom: 20px;
-}
-@media (min-width: 768px) {
-  .item-view .category {
-    padding-bottom: 35px;
-  }
-}
-@media (max-width: 767px) {
-  .category {
-    padding-top: 20px;
-    border-bottom: 1px solid #ddd;
-    margin-bottom: -1px;
-  }
 }
 .item,
 .selectable,
@@ -136,28 +130,8 @@ input[type=text].add {
 .yellow {
   background-color: #ff0;
 }
-@media (min-width: 768px) {
-  .navbar-inner > .container {
-    padding-left: 20px;
-  }
-}
 .navbar-fixed-top {
   margin-bottom: 0;
-}
-@media (min-width: 980px) {
-  body {
-    padding-top: 40px;
-  }
-}
-@media (max-width: 767px) {
-  body {
-    padding-left: 0;
-    padding-right: 0;
-  }
-  body .navbar-fixed-top {
-    margin-left: 0;
-    margin-right: 0;
-  }
 }
 .background,
 body {
@@ -177,10 +151,17 @@ footer {
   padding-top: 20px;
   padding-bottom: 20px;
 }
-@media (max-width: 767px) {
-  footer {
-    display: none;
-  }
+.item-view .category {
+  padding-bottom: 35px;
+}
+body {
+  padding-top: 40px;
+}
+.navbar-inner > .container {
+  padding-left: 20px;
+}
+.notification {
+  min-height: 150px;
 }
 .form-actions .btn-toolbar {
   margin-top: 0;
@@ -196,11 +177,16 @@ footer {
 .category > a {
   color: #000;
 }
-@media (min-width: 768px) {
-  .notification {
-    min-height: 150px;
-  }
+section.waiting.editable {
+  background: url("http://jqueryui.com/themeroller/images/?new=eeeeee&w=40&h=40&f=png&q=100&fltr[]=over|textures/08_diagonals_thick.png|0|0|90red");
 }
-.ui-state-highlight {
-  height: 50px;
+section.waiting.editable .configurable,
+section.waiting.editable form {
+  background: url("http://jqueryui.com/themeroller/images/?new=eeeeee&w=40&h=40&f=png&q=100&fltr[]=over|textures/08_diagonals_thick.png|0|0|90red");
+}
+.info-label {
+  color: #666;
+  padding-left: 10px;
+  min-width: 100px;
+  display: inline-block;
 }

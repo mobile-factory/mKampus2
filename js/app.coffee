@@ -208,9 +208,12 @@ class LoginView extends Backbone.View
     e.preventDefault()
     $('#login-button').button('toggle')
     user = new User({username: @$('#login-input').val(), password: @$('#password-input').val()})
+    console.log "LOGIN user", user
     user.login false,
       success: (u) =>
         # $('#login-button').button('toggle')
+        console.log 'logged in user', user
+        console.log 'StackMob.getLoggedInUser()', StackMob.getLoggedInUser()
         @trigger 'login', user
       error: (u, e) =>
         @$('.control-group').addClass('error')
@@ -255,16 +258,16 @@ class CollectionView extends Backbone.View
     options = _.extend(_.clone(@options), {model, @collection})
     view = new @itemView options
     console.log 'view', view
-    $collection = @$collection or @$el
-    if @options.prepend?
-      $collection.prepend view.render().el
-    else
-      $collection.append view.render().el
-    
-    console.log 'view.el', view.el
+    if @$collection?
+      if @options.prepend?
+        @$collection.prepend view.render().el
+      else
+        console.log '@$collection', @$collection 
+        @$collection.append view.render().el
 
   render: ->
     console.log 'CollectionView rendered', @
+    @$collection or= @$el
     @addAll()
     @
 
@@ -367,7 +370,37 @@ class SidebarLayout extends Backbone.View
     listView.render()
     
     @
-    
+
+class SelectableView extends Backbone.View
+
+  labelAttribute: 'name'
+  placeholderLabel: 'Nowy element'
+
+  template: -> """
+    <div class="selectable span4" data-id="{{ id }}">
+      <p class="date">{{{ timeSwitch createddate }}}</p>
+      <p class="content">
+        {{#if #{@labelAttribute} }} {{ #{@labelAttribute} }} {{else}} #{@placeholderLabel}{{/if}}
+      </p>
+    </div>
+    """
+
+  initialize: ->
+    @model.on 'change', @render
+    @model.on 'reset', @render
+    @model.on 'sync', @render
+
+  events:
+    'click': 'triggerSelect'
+
+  triggerSelect: =>
+    @model?.trigger 'select', @model
+    @trigger 'select', @model
+
+  render: =>
+    @$el.html @template().render _.extend(@model.toJSON(), {id: @model.id})
+    window.app.updateLinks()
+    @    
 
 ################### NOTIFICATIONS ###################
 
@@ -470,6 +503,7 @@ class NotificationsView extends CollectionView
     content = @$input.val()
     return if content.length < 0 or content.length > Notification.maxLength
     @$submit.button('loading')
+    console.log 'StackMob.getLoggedInUser()', StackMob.getLoggedInUser()
     StackMob.customcode 'broadcast'
       , {content}
       , success: =>
@@ -497,8 +531,6 @@ class NotificationsView extends CollectionView
     @
 
 ############################# SURVEYS #############################
-
-
 
 class Survey extends StackMob.Model
   schemaName: 'survey'
@@ -565,7 +597,6 @@ class Questions extends StackMob.Collection
   #       question.save {survey: survey.id}, success: (model) =>
   #         promise.resolve model
       
-
 class SurveyView extends Backbone.View
   
   template: """
@@ -1057,7 +1088,7 @@ class InformationElement extends StackMob.Model
     type: 'text'
   
   parse: (data) ->
-    console.log 'InformationElement::parse (data)', data
+    # console.log 'InformationElement::parse (data)', data
     if typeof data is "object"
       data
     else
@@ -1069,11 +1100,18 @@ class InformationElements extends StackMob.Collection
   comparator: (model) ->
     model.get 'position'
   
+  newPosition: ->
+    if @size > 0
+      _(@pluck('position').sort()).last() + 1
+    else
+      1
+  
   parse: (response) ->
     _(response).reject (model) -> model.is_deleted
 
 class InformationGroup extends StackMob.Model
   schemaName: 'information_group'
+  collectionClass: InformationElements
   
   saveInformations: =>
     @informations.each (model) =>
@@ -1082,11 +1120,11 @@ class InformationGroup extends StackMob.Model
   getInformations: ->
     unless @fetchElementsPromise?
       @fetchElementsPromise = $.Deferred()
-      @informations = new InformationElements()
+      @informations = new @collectionClass()
       if @id?
         fetchMyElements = new StackMob.Collection.Query()
         console.log '@id', @id
-        fetchMyElements.equals('information_group', @id)
+        fetchMyElements.equals(@schemaName, @id)
         @informations.query(fetchMyElements)
         console.log 'waiting for reset', @informations
         @informations.on 'all', (event) =>
@@ -1100,57 +1138,26 @@ class InformationGroup extends StackMob.Model
 
 class InformationGroups extends LoadableCollection
   model: InformationGroup
-
-class SelectableView extends Backbone.View
   
-  labelAttribute: 'name'
-  
-  template: -> """
-    <div class="selectable span4" data-id="{{ id }}">
-      <p class="date">{{{ timeSwitch createddate }}}</p>
-      <p class="content">
-        {{ #{@labelAttribute} }}
-      </p>
-    </div>
-    """
-  
-  initialize: ->
-    @model.on 'change', @render
-    @model.on 'reset', @render
-    @model.on 'sync', @render
-  
-  events:
-    'click': 'triggerSelect'
-  
-  triggerSelect: =>
-    @model?.trigger 'select', @model
-    @trigger 'select', @model
-    
-    #idea: event aggregator injection
-    # if aggregator = @options.events               
-    #   aggregator.trigger 'select', @
-  
-  render: =>
-    @$el.html @template().render _.extend(@model.toJSON(), {id: @model.id})
-    window.app.updateLinks()
-    @
+  parse: (response) ->
+    _(response).reject (model) -> model.is_deleted
   
 class InformationGroupView extends SelectableView
 
 class InformationElementView extends Backbone.View
   
+  modelId: 'information_element_id'
+  
   templateShow:
     text: -> """<p>{{ text }}</p>"""
     title: -> """<h3>{{ title }}</h3>"""
-    image: -> """<img src="{{ image }}"/>"""
   
   templateEdit:
     text: -> """<textarea class="text-input add" type="text" rows="5" autofocus="autofocus" placeholder="Treść nowego akapitu">{{ text }}</textarea>"""
     title: -> """<input class="title-input add" type="text" autofocus="autofocus" placeholder="Treść nowego tytułu" value="{{ title }}"/>"""
-    image: -> """<img src="{{ image }}"/>"""
   
   template: -> """
-    <section class="editable sortable {{#if isOpen}} active {{/if}}" data-sortable-id="{{information_element_id}}">
+    <section class="editable sortable {{#if isOpen}} active {{/if}} {{#if hasChanged}} waiting {{/if}}" data-sortable-id="{{#{@modelId}}}">
       <div class="configurable show">
         #{if template = @templateShow[@model.get('type')] then template()}
       </div>
@@ -1158,15 +1165,32 @@ class InformationElementView extends Backbone.View
         <form class="edit-form" action="">
           #{if template = @templateEdit[@model.get('type')] then template()}
           <div class="form-actions">
-            <button type="submit" class="save-button btn btn-primary btn-large pull-right">
-              <i class="icon-pencil icon-white"></i>
-              Zapisz element
-            </button>
+            <div class="btn-toolbar pull-right">
+
+              <div class="btn-group">
+                
+                <button class="up-button btn btn-large">
+                  <i class="icon-arrow-up"></i>
+                </button>
+                <button class="down-button btn btn-large">
+                  <i class="icon-arrow-down"></i>
+                </button>
+                
+              </div>
+
+              <div class="btn-group">
+                <button type="submit" class="save-button btn btn-primary btn-large">
+                  <i class="icon-pencil icon-white"></i>
+                  Zapisz element
+                </button>
+              </div>
+            </div>
+
             <button class="destroy-button btn btn-large">
               <i class="icon-remove"></i>
               Usuń element
             </button>
-            
+
           </div>
         </form>
       </div>
@@ -1177,6 +1201,34 @@ class InformationElementView extends Backbone.View
     'click .save-button': 'save'
     'submit': 'save'
     'click .destroy-button': 'destroy'
+    'click .up-button': 'up'
+    'click .down-button': 'down'
+  
+  up: (event) ->
+    event.preventDefault()
+    console.log 'up'
+    sortedAbove = _(@model.collection.filter((model) => model.get('position') < @model.get('position'))).sortBy((m) -> m.get('position'))
+    if sortedAbove.length > 0
+      swapWith = _(sortedAbove).last()
+      myPosition = @model.get('position')
+      @model.set position: swapWith.get('position')
+      swapWith.set position: myPosition
+      @model.collection.sort()
+      @model.save({}, {wait:true})
+      swapWith.save({}, {wait:true})
+  
+  down: (event) ->
+    event.preventDefault()
+    console.log 'down'
+    sortedAbove = _(@model.collection.filter((model) => model.get('position') > @model.get('position'))).sortBy((m) -> m.get('position'))
+    if sortedAbove.length > 0
+      swapWith = _(sortedAbove).first()
+      myPosition = @model.get('position')
+      @model.set position: swapWith.get('position')
+      swapWith.set position: myPosition
+      @model.collection.sort()
+      @model.save({}, {wait:true})
+      swapWith.save({}, {wait:true})
   
   initialize: ->
     @model.on 'change', @render, @
@@ -1186,14 +1238,18 @@ class InformationElementView extends Backbone.View
     @model.isOpen = true
     @render()
   
-  save: (event) ->
-    event.preventDefault()
+  persist: ->
     type = @model.get('type')
     if type is "text"
       @model.set text: @$(".text-input").val()
     else if type is "title"
       @model.set title: @$(".title-input").val()
     @model.save()
+  
+  save: (event) ->
+    event.preventDefault()
+    @persist()
+    console.log 'after save'
     @close()
   
   destroy: (event) ->
@@ -1207,12 +1263,12 @@ class InformationElementView extends Backbone.View
     @render()
   
   render: ->
-    @$el.html @template().render _.extend(@model.toJSON(), {isOpen: @model.isOpen})
+    @$el.html @template().render _.extend(@model.toJSON(), {isOpen: @model.isOpen, hasChanged: @model.changedAttributes()})
     @
 
-class InformationGroupShowView extends CollectionView
+class GroupShowView extends CollectionView
   
-  titlePlaceholder: "Tytuł nowego działu"
+  titlePlaceholder: 'Tytuł nowego działu'
   labelAttribute: 'name'
   
   itemView: InformationElementView
@@ -1221,39 +1277,34 @@ class InformationGroupShowView extends CollectionView
     @collection = @model.getInformations()
     super
   
-  events:
-    'click #survey-submit': 'save'
-    'click .create-text': 'createText'
-    'click .create-title': 'createTitle'
+  actionsButtonGroupTemplate: -> ""
+  
+  events: ->
+    'click #information-submit': 'save'
+    'click .destroy': 'destroy'
     'sortstop #elements': 'sort'
-    
+  
   sort: (event) ->
     console.log 'sort stop', event
     $.when(@collection).then (collection) =>
       @$('.sortable').each (index, element) ->
         id = $(element).data('sortable-id')
-        collection.get(id).save({position: index})
-  
-  createText: (event) ->
-    event.preventDefault()
-    $.when(@model.getInformations()).then (informations) =>
-      newPosition = _(informations.pluck('position').sort()).last() + 1
-      console.log newPosition
-      informations.add({type: 'text', position: newPosition, information_group: @model.id})
-  
-  createTitle: (event) ->
-    event.preventDefault()
-    $.when(@model.getInformations()).then (informations) =>
-      newPosition = _(informations.pluck('position').sort()).last() + 1
-      console.log newPosition
-      informations.add({type: 'title', position: newPosition, information_group: @model.id})
+        model = collection.get(id)
+        unless model.get('position') is index
+          model.set({position: index})
+          model.save()
   
   persist: ->
     @model.set name: @$('#title-input').val()
-  
+
   save: ->
     @persist()
     @model.save()
+
+  destroy: ->
+    @model.save({is_deleted: true})
+    @model.collection.remove @model
+    app.navigate 'informations', true
   
   template: -> """
     <div class="editable active" id="title-section">
@@ -1264,59 +1315,229 @@ class InformationGroupShowView extends CollectionView
       </div>
 
       <div id="title-show" class="category show">
-        <h1 id="title">{{ #{@labelAttribute} }}</h1>
+        <h1 id="title">{{#if #{@labelAttribute} }}{{ #{@labelAttribute} }}{{else}}Nowa kategoria{{/if}}</h1>
       </div>
     </div>
-    
+
     <div id="elements"></div>
-      
+
     <div class="form-actions section">
-      
+
       <div class="btn-toolbar pull-right">
-        
+
+        #{@actionsButtonGroupTemplate()}
+
         <div class="btn-group">
-          
-          <button class="create-text btn btn-large">
-            <i class="icon-align-left"></i>
-            Dodaj akapit
-          </button>
-          
-          <button class="btn btn-large dropdown-toggle" data-toggle="dropdown">
-            <div class="caret"></div>
-          </button>
-          
-          <ul class="dropdown-menu">
-            <li>
-              <a class="create-title" href="#"><i class="icon-bookmark"></i> Dodaj tytuł</a>
-            </li>
-            <li>
-              <a class="create-text" href="#"><i class="icon-align-left"></i> Dodaj paragraf</a>
-            </li>
-          </ul>
-        </div>
-        
-        <div class="btn-group">
-          <button id="survey-submit" class="btn btn-large btn-primary top-level-actions">
+          <button id="information-submit" class="btn btn-large btn-primary top-level-actions">
             <i class="icon-ok icon-white"></i>
             Zapisz
           </button>
         </div>
       </div>
-      
+
       <button class="destroy btn btn-large">
         <i class="icon-remove"></i>
         Usuń
       </button>
     </div>
     """
-  
+
   render: ->
     @$el.html @template().render @model.toJSON()
     @$collection = @$('#elements')
-    @$collection.sortable({
-    })
+    @$collection.sortable({})
     @$collection.disableSelection()
     super
+
+
+class InformationGroupShowView extends GroupShowView
+  
+  events: ->
+    _.extend super,
+      'click .create-text': 'createText'
+      'click .create-title': 'createTitle'
+  
+  createText: (event) ->
+    event.preventDefault()
+    $.when(@model.getInformations()).then (informations) =>
+      informations.add({type: 'text', position: informations.newPosition(), information_group: @model.id})
+  
+  createTitle: (event) ->
+    event.preventDefault()
+    $.when(@model.getInformations()).then (informations) =>
+      newPosition = _(informations.pluck('position').sort()).last() + 1
+      console.log newPosition
+      informations.add({type: 'title', position: newPosition, information_group: @model.id})
+
+  actionsButtonGroupTemplate: -> """
+    <div class="btn-group">
+      <button class="create-text btn btn-large">
+        <i class="icon-align-left"></i>
+        Dodaj akapit
+      </button>
+      
+      <button class="btn btn-large dropdown-toggle" data-toggle="dropdown">
+        <div class="caret"></div>
+      </button>
+      
+      <ul class="dropdown-menu">
+        <li>
+          <a class="create-title" href="#"><i class="icon-bookmark"></i> Dodaj tytuł</a>
+        </li>
+        <li>
+          <a class="create-text" href="#"><i class="icon-align-left"></i> Dodaj paragraf</a>
+        </li>
+      </ul>
+    </div>
+    """
+     
+################### CONTACTS ########################
+
+class ContactElement extends InformationElement
+  schemaName: 'contact_element'
+  
+  @types: [
+      {name: 'header', id: "200", icon: 'bookmark', add: 'nagłówek'}
+    , {name: 'person', id: "100", icon: 'user', add: 'osobę'}
+    , {name: 'address', id: "4", icon: 'home', add: 'adres'}
+    , {name: 'phone', id: "1", icon: 'headphones', add: 'telefon'}
+    , {name: 'email', id: "2", icon: 'envelope', add: 'email'}
+    , {name: 'url', id: "3", icon: 'globe', add: 'stronę www'}
+    , {name: 'text', id: "5", icon: 'pencil', add: 'własną etykietę'}
+    ]
+  
+  setDefaultKey: ->
+    unless @has 'key'
+      @set key: switch @get('type')
+        when "1" then 'telefon'
+        when "2" then 'email'
+        when "3" then 'www'
+        when "4" then 'adres'
+        when "5" then 'etykieta'
+        else undefined
+  
+  initialize: ->
+    @setDefaultKey()
+    super
+
+class ContactElements extends InformationElements
+  model: ContactElement
+
+class ContactGroup extends InformationGroup
+  schemaName: 'contact_group'
+  collectionClass: ContactElements
+
+class ContactGroups extends LoadableCollection
+  model: ContactGroup
+
+class ContactGroupView extends InformationGroupView
+
+class ContactElementView extends InformationElementView
+  
+  modelId: 'contact_element_id'
+  
+  types: 
+    "200": 'header1'
+    "100": 'person'
+    "5": 'text'
+    "4": 'address'
+    "3": 'url'
+    "2": 'email'
+    "1": 'phone'
+  
+  templateShow:
+    "200": -> """<h3>{{ value }}"""
+    "100": -> """<h4><i class="icon-user"></i> {{ value }}</h4>"""
+    "5": -> """<p><span class="info-label"><i class="icon-pencil"></i> {{ key }}</span> {{ value }}</p>"""
+    # "4": -> """<p><span class="badge badge-warning">{{ key }}</span> {{ value }}</p>"""
+    #     "3": -> """<p><span class="badge badge-info">{{ key }}</span> <a href="http://{{ value }}">{{ value }}</a></p>"""
+    #     "2": -> """<p><span class="badge badge-success">{{ key }}</span> <a href="mailto:{{ value }}">{{ value }}</a></p>"""
+    #     "1": -> """<p><span class="badge badge-important">{{ key }}</span> {{ value }}</p>"""
+    "4": -> """<p><span class="info-label"><i class="icon-home"></i> {{ key }}</span> {{ value }}</p>"""
+    "3": -> """<p><span class="info-label"><i class="icon-globe"></i> {{ key }}</span> <a href="http://{{ value }}">{{ value }}</a></p>"""
+    "2": -> """<p><span class="info-label"><i class="icon-envelope"></i> {{ key }}</span> <a href="mailto:{{ value }}">{{ value }}</a></p>"""
+    "1": -> """<p><span class="info-label"><i class="icon-headphones"></i> {{ key }}</span> {{ value }}</p>"""
+  
+  templateEditWithKey = (placeholder) -> -> """
+    <div class="row-fluid">
+      <div class="span4">
+        <input class="key add" type="text" placeholder="#{placeholder}" value="{{ key }}"/>
+      </div>
+      <div class="span8">
+        <input class="value add" type="text" autofocus="autofocus" placeholder="" value="{{ value }}"/>
+      </div>
+    </div>
+    """
+  
+  templateEditWithoutKey = (placeholder) -> ->
+    """<input class="value add" type="text" autofocus="autofocus" placeholder="#{placeholder}" value="{{ value }}"/>"""
+  
+  templateEdit:
+    "1": templateEditWithKey 'telefon'
+    "2": templateEditWithKey 'email'
+    "3": templateEditWithKey 'www'
+    "4": templateEditWithKey 'adres'
+    "5": -> """
+      <div class="row-fluid">
+        <div class="span4">
+          <input class="key add" type="text" autofocus="autofocus" placeholder="etykieta" value="{{ key }}"/>
+        </div>
+        <div class="span8">
+          <input class="value add" type="text" placeholder="" value="{{ value }}"/>
+        </div>
+      </div>
+      """
+    "100": templateEditWithoutKey 'Nazwa osoby lub jednostki'
+    "200": templateEditWithoutKey 'Nazwa działu'
+  
+  persist: ->
+    @model.set key: @$('.key').val(), value: @$('.value').val()
+    @model.save()
+    console.log 'save'
+
+class ContactGroupShowView extends GroupShowView
+
+  titlePlaceholder: 'Tytuł nowego działu'
+  labelAttribute: 'name'
+  
+  itemView: ContactElementView
+
+  
+  creationEvents: ->
+    events = {}
+    _(ContactElement.types).each (type) =>
+      events["click .create-#{type.name}"] = (event) =>
+        event.preventDefault()
+        $.when(@model.getInformations()).then (informations) =>
+          informations.create({type: type.id, position: informations.newPosition(), contact_group: @model.id})
+    console.log 'events', events
+    events
+  
+  events: =>
+    _.extend super, @creationEvents()
+
+  actionsButtonGroupTemplate: -> """
+    <div class="btn-group">
+      
+      {{#types}}
+        <button class="create-{{name}} btn btn-large">
+          <i class="icon-{{icon}}"></i>
+        </button>
+      {{/types}}
+
+      <button class="btn btn-large dropdown-toggle" data-toggle="dropdown">
+        <div class="caret"></div>
+      </button>
+
+      <ul class="dropdown-menu">
+        {{#types}}
+          <li>
+            <a class="create-{{name}}" href="#"><i class="icon-{{icon}}"></i> Dodaj {{add}}</a>
+          </li>
+        {{/types}}
+      </ul>
+    </div>
+    """.render {types: ContactElement.types}
 
 ################### PLACES ###################
 
@@ -1557,6 +1778,8 @@ class App extends Backbone.Router
     'map/:id': 'map'
     'restaurants': 'restaurants'
     'restaurants/:id*': 'restaurants'
+    'contact': 'contact'
+    'contact/:id': 'contact'
    
   initialize: ->
     @on 'all', @updateLinks
@@ -1574,6 +1797,10 @@ class App extends Backbone.Router
     @InformationGroups = new InformationGroups()
     @InformationGroups.on 'select', (model) =>
       @navigate "/informations/#{model.id}", true
+    
+    @ContactGroups = new ContactGroups()
+    @ContactGroups.on 'select', (model) =>
+      @navigate "/contact/#{model.id}", true
     
     @Places = new Places()
     @Places.on 'select', (model) =>
@@ -1646,13 +1873,14 @@ class App extends Backbone.Router
     
     if id? # pokaż dany element
       if id is 'new'
-        window.model = model = new InformationGroup
-        model.on 'sync', =>
+        $.when(collection.load()).then (collection) =>
+          window.model = model = new InformationGroup()
           collection.add model
-        mainView = new InformationGroupShowView({model})
-        view = new SidebarLayout({title: 'Informacje', backLink: '#/informations', mainView, listView})
-        @setView view
-        collection.load()
+          model.save {}, success: =>
+            # mainView = new InformationGroupShowView({model})
+            # view = new SidebarLayout({title: 'Informacje', backLink: '#/informations', mainView, listView})
+            # @setView view
+            @navigate "/informations/#{model.id}", true
       else
         $.when(collection.load()).then (collection) =>
           if window.model = model = collection.get(id)
@@ -1669,6 +1897,35 @@ class App extends Backbone.Router
         @navigate('informations/new', true)
       view = new MenuLayout({title: 'Informacje', listView, addView})
       console.log 'info'
+      @setView view
+      collection.load()
+  
+  contact: (id) =>
+    collection = @ContactGroups
+
+    listView = new CollectionView({collection, itemView: ContactGroupView})
+
+    if id? # pokaż dany element
+      if id is 'new'
+        $.when(collection.load()).then (collection) =>
+          window.model = model = new ContactGroup()
+          collection.add model
+          model.save {}, success: =>
+            @navigate "/contact/#{model.id}", true
+      else
+        $.when(collection.load()).then (collection) =>
+          if window.model = model = collection.get(id)
+            mainView = new ContactGroupShowView({model})
+            view = new SidebarLayout({title: 'Kontakt', backLink: '#/contact', mainView, listView})
+            @setView view
+          else
+            console.warn "Nie ma elementu o identyfikatorze #{id}. Przekierowuję do listy elementów."
+            @navigate '/contact', true
+    else # pokaż listę elementów
+      addView = new AddView({collection, placeholder: 'Tytuł nowego działu'})
+      addView.on 'click', =>
+        @navigate('contact/new', true)
+      view = new MenuLayout({title: 'Kontakt', listView, addView})
       @setView view
       collection.load()
     
@@ -1820,6 +2077,9 @@ class MenuItem extends StackMob.Model
 class MenuItems extends StackMob.Collection
   model: MenuItem
   
+  parse: (response) ->
+    _(response).reject (model) -> model.is_deleted
+  
   comparator: (menuItem) ->
     a = (if menuItem.get('is_featured') then -1000 else 0) + menuItem.get('price')
     console.log 'a', a
@@ -1851,9 +2111,8 @@ class RestaurantMenuItemView extends Backbone.View
         <p>{{ description }}</p>
       </div>
       <div class="row-fluid edit">
-        <form class="form-horizontal span12 item">
+        <form class="span12 item compact-bottom">
           
-            
             <div class="control-group">
               <label for="" class="control-label">Nazwa</label>
               <div class="controls"><input type="text" class="span12 input-name" value="{{ name }}"/></div>
@@ -1861,27 +2120,33 @@ class RestaurantMenuItemView extends Backbone.View
             
             <div class="control-group">
               <label for="" class="control-label">Cena</label>
-              <div class="controls"><input type="text" class="span12 input-price" value="{{ price }}"/></div>
+              <div class="controls"><input type="text" class="span12 input-price" value="{{ price }}" placeholder="9.99"/></div>
             </div>
             
             <div class="control-group">
               <label for="" class="control-label">Opis</label>
-              <div class="controls"><input type="text" class="span12 input-description" value="{{ description }}"/></div>
+              <div class="controls">
+                <textarea rows="3" class="span12 input-description">{{ description }}</textarea>
+              </div>
             </div>
             
             <div class="control-group">
-              <label for="" class="control-label"><i class="icon-star"></i></label>
+              <label for="" class="control-label"><i class="icon-star"></i> Polecane</label>
               <div class="controls">
-                <label class="checkbox">
                   <input type="checkbox" class="span12 input-featured" {{#if is_featured}}checked{{/if}}/>
-                </label>
               </div>
             </div>
-
-            <button class="btn btn-primary btn-large save pull-right">
-              <i class="icon-ok icon-white"></i>
-              Zapisz
-            </button>
+            <div class="form-actions compact">
+              <button class="btn btn-primary btn-large save pull-right">
+                <i class="icon-ok icon-white"></i>
+                Zapisz
+              </button>
+              <button class="btn btn-large destroy">
+                <i class="icon-remove"></i>
+                Usuń
+              </button>
+            </div>
+            
 
         </form>
       </div>
@@ -1892,6 +2157,7 @@ class RestaurantMenuItemView extends Backbone.View
     'click .show': 'edit'
     'click .save': 'save'
     'submit form': 'save'
+    'click .destroy': 'destroy'
   
   edit: (e) =>
     @$('section').addClass 'active'
@@ -1905,6 +2171,13 @@ class RestaurantMenuItemView extends Backbone.View
       is_featured: !! @$('.input-featured').attr('checked')
       restaurant: @options.restaurant
     @model.save()
+  
+  destroy: (e) =>
+    e.preventDefault()
+    @model.set is_deleted: true
+    @model.save()
+    @remove()
+    @collection.remove @model
   
   initialize: ->
     @model.on 'change', @render
@@ -2038,7 +2311,7 @@ $ ->
   
   bazylia = off
   
-  auth = off
+  auth = on
   
   if bazylia
     window.globals.current_user = "Bazylia"

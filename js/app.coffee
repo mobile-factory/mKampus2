@@ -12,7 +12,7 @@
 StackMob.init
   appName: "mkampus2"
   clientSubdomain: "mobilefactorysa"
-  apiVersion: 1
+  apiVersion: 0
   
 moment.lang('pl')
 
@@ -2318,8 +2318,8 @@ $ ->
     displayRestaurantPanelById 'Bazylia', new User({username: "Bazylia", role: "restaurant", restaurant: "Bazylia"})
   else  
     if auth
-      loginView = new LoginView({el: $('body')})
-      loginView.render()
+      loginView = new LoginView()
+      $('body').html loginView.render().el
       loginView.on 'login', (user) ->
         window.globals.current_user = user.get('username')
         console.log 'login', user

@@ -8,7 +8,7 @@
   StackMob.init({
     appName: "mkampus2",
     clientSubdomain: "mobilefactorysa",
-    apiVersion: 1
+    apiVersion: 0
   });
 
   moment.lang('pl');
@@ -3135,10 +3135,8 @@
       }));
     } else {
       if (auth) {
-        loginView = new LoginView({
-          el: $('body')
-        });
-        loginView.render();
+        loginView = new LoginView();
+        $('body').html(loginView.render().el);
         return loginView.on('login', function(user) {
           var _this = this;
           window.globals.current_user = user.get('username');

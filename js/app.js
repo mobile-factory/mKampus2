@@ -220,18 +220,14 @@
     LoginView.prototype.submit = function(e) {
       var user,
         _this = this;
-      console.log("submited");
       e.preventDefault();
       $('#login-button').button('toggle');
       user = new User({
         username: this.$('#login-input').val(),
         password: this.$('#password-input').val()
       });
-      console.log("LOGIN user", user);
       return user.login(false, {
         success: function(u) {
-          console.log('logged in user', user);
-          console.log('StackMob.getLoggedInUser()', StackMob.getLoggedInUser());
           return _this.trigger('login', user);
         },
         error: function(u, e) {
@@ -293,10 +289,8 @@
 
     CollectionView.prototype.initialize = function() {
       var _this = this;
-      console.log('CollectionView initialized');
       this.itemView || (this.itemView = this.options.itemView);
       return $.when(this.collection).then(function(collection) {
-        console.log('collection', collection);
         collection.on('reset', _this.addAll);
         collection.on('add', _this.addAll);
         return collection.on('remove', _this.addAll);
@@ -307,9 +301,7 @@
       var $collection,
         _this = this;
       $collection = this.$collection || this.$el;
-      console.log('$collection', $collection);
       return $.when(this.collection).then(function(collection) {
-        console.log('CollectionView addAll from collection', collection, collection.length, _this.itemView);
         $collection.empty();
         return collection.each(_this.addOne);
       });
@@ -322,19 +314,16 @@
         collection: this.collection
       });
       view = new this.itemView(options);
-      console.log('view', view);
       if (this.$collection != null) {
         if (this.options.prepend != null) {
           return this.$collection.prepend(view.render().el);
         } else {
-          console.log('@$collection', this.$collection);
           return this.$collection.append(view.render().el);
         }
       }
     };
 
     CollectionView.prototype.render = function() {
-      console.log('CollectionView rendered', this);
       this.$collection || (this.$collection = this.$el);
       this.addAll();
       return this;
@@ -629,12 +618,10 @@
         return;
       }
       this.$submit.button('loading');
-      console.log('StackMob.getLoggedInUser()', StackMob.getLoggedInUser());
       return StackMob.customcode('broadcast', {
         content: content
       }, {
         success: function() {
-          console.log('broadcast sent');
           return _this.collection.create({
             content: content
           }, {
@@ -694,7 +681,6 @@
     Survey.prototype.validate = function(_arg) {
       var title;
       title = _arg.title;
-      console.log('survey validation, title:', title);
       if (title.length < 1) {
         return "Ankieta musi mieć tytuł";
       }
@@ -835,10 +821,9 @@
       $.when(this.collection).then(function(collection) {
         var active;
         active = collection.active && ((_this.model.id && collection.active.id === _this.model.id) || (collection.active.cid === _this.model.cid));
-        _this.$el.html(_this.template.render(_.extend(_this.model.toJSON(), {
+        return _this.$el.html(_this.template.render(_.extend(_this.model.toJSON(), {
           active: active
         })));
-        return console.log('render survey view', collection.active);
       });
       return this;
     };
@@ -886,17 +871,13 @@
     };
 
     QuestionEditView.prototype.onEdit = function(model) {
-      console.log('onEdit');
       if (model === this.model) {
         return this.open();
       } else {
-        console.log('edit another question');
         this.persist();
         if (this.model.get('content').length > 0) {
-          console.log('has content -> save');
           return this.save();
         } else {
-          console.log('no content -> destroy');
           return this.model.destroy();
         }
       }
@@ -908,7 +889,6 @@
 
     QuestionEditView.prototype.destroy = function(e) {
       e.preventDefault();
-      console.log(10);
       this.model.collection.trigger('close');
       return this.model.destroy();
     };
@@ -919,14 +899,11 @@
           event.preventDefault();
         }
       }
-      console.log('save');
       this.persist();
       if (this.model.get('content').length > 0) {
-        console.log('has content');
         this.close();
         return this.model.collection.trigger('close');
       } else {
-        console.log("doesn't have content");
         return this.render();
       }
     };
@@ -1150,9 +1127,7 @@
 
     SurveyShowView.prototype.initialize = function() {
       this.collection = this.model.getQuestions();
-      $.when(this.collection).then(function(collection) {
-        return console.log('questions of survey', this.model, collection);
-      });
+      $.when(this.collection).then(function(collection) {});
       return SurveyShowView.__super__.initialize.apply(this, arguments);
     };
 
@@ -1160,7 +1135,6 @@
       this.$el.html(this.template.render(this.model.toJSON()));
       this.$collection = this.$('#questions');
       SurveyShowView.__super__.render.apply(this, arguments);
-      console.log('@$collection', this.$collection);
       return this;
     };
 
@@ -1220,7 +1194,6 @@
 
     SurveyEditView.prototype.onSetTitle = function() {
       var collection;
-      console.log('on set ttitle');
       collection = window.app.Surveys;
       if (!collection.include(this.model)) {
         return collection.add(this.model);
@@ -1235,14 +1208,12 @@
       if (e != null) {
         e.preventDefault();
       }
-      console.log('publish');
       return this.model.save();
     };
 
     SurveyEditView.prototype.destroy = function(e) {
       var _this = this;
       e.preventDefault();
-      console.log('destroy');
       this.model.destroy();
       return $.when(this.collection).then(function(collection) {
         collection.remove(_this.model);
@@ -1386,10 +1357,15 @@
     };
 
     InformationElements.prototype.newPosition = function() {
-      if (this.size > 0) {
-        return _(this.pluck('position').sort()).last() + 1;
+      var sorted;
+      if (this.length > 0) {
+        sorted = _(this.pluck('position').sort(function(a, b) {
+          return a - b;
+        }));
+        console.log('sorted', sorted);
+        return sorted.last() + 1;
       } else {
-        return 1;
+        return 0;
       }
     };
 
@@ -1435,15 +1411,10 @@
         this.informations = new this.collectionClass();
         if (this.id != null) {
           fetchMyElements = new StackMob.Collection.Query();
-          console.log('@id', this.id);
           fetchMyElements.equals(this.schemaName, this.id);
           this.informations.query(fetchMyElements);
-          console.log('waiting for reset', this.informations);
-          this.informations.on('all', function(event) {
-            return console.log('informations event', event);
-          });
+          this.informations.on('all', function(event) {});
           this.informations.on('reset', function() {
-            console.log('reset', _this.informations);
             return _this.fetchElementsPromise.resolve(_this.informations);
           });
         } else {
@@ -1541,7 +1512,6 @@
       var myPosition, sortedAbove, swapWith,
         _this = this;
       event.preventDefault();
-      console.log('up');
       sortedAbove = _(this.model.collection.filter(function(model) {
         return model.get('position') < _this.model.get('position');
       })).sortBy(function(m) {
@@ -1570,7 +1540,6 @@
       var myPosition, sortedAbove, swapWith,
         _this = this;
       event.preventDefault();
-      console.log('down');
       sortedAbove = _(this.model.collection.filter(function(model) {
         return model.get('position') > _this.model.get('position');
       })).sortBy(function(m) {
@@ -1623,7 +1592,6 @@
     InformationElementView.prototype.save = function(event) {
       event.preventDefault();
       this.persist();
-      console.log('after save');
       return this.close();
     };
 
@@ -1688,7 +1656,6 @@
 
     GroupShowView.prototype.sort = function(event) {
       var _this = this;
-      console.log('sort stop', event);
       return $.when(this.collection).then(function(collection) {
         return _this.$('.sortable').each(function(index, element) {
           var id, model;
@@ -1772,12 +1739,9 @@
       var _this = this;
       event.preventDefault();
       return $.when(this.model.getInformations()).then(function(informations) {
-        var newPosition;
-        newPosition = _(informations.pluck('position').sort()).last() + 1;
-        console.log(newPosition);
         return informations.add({
           type: 'title',
-          position: newPosition,
+          position: informations.newPosition(),
           information_group: _this.model.id
         });
       });
@@ -2014,8 +1978,7 @@
         key: this.$('.key').val(),
         value: this.$('.value').val()
       });
-      this.model.save();
-      return console.log('save');
+      return this.model.save();
     };
 
     return ContactElementView;
@@ -2047,15 +2010,18 @@
         return events["click .create-" + type.name] = function(event) {
           event.preventDefault();
           return $.when(_this.model.getInformations()).then(function(informations) {
+            var newPosition;
+            console.log('informations', informations);
+            newPosition = informations.newPosition();
+            console.log('newPosition', newPosition);
             return informations.create({
               type: type.id,
-              position: informations.newPosition(),
+              position: newPosition,
               contact_group: _this.model.id
             });
           });
         };
       });
-      console.log('events', events);
       return events;
     };
 
@@ -2161,7 +2127,6 @@
     PlaceShowView.prototype.save = function(e) {
       var attributes;
       e.preventDefault();
-      console.log('save');
       attributes = {
         name: this.$('.input-title').val(),
         description: this.$('.input-description').val(),
@@ -2174,7 +2139,6 @@
 
     PlaceShowView.prototype.destroy = function(e) {
       e.preventDefault();
-      console.log('destroy');
       this.model.set({
         is_deleted: true
       });
@@ -2299,7 +2263,6 @@
     RestaurantUserShowView.prototype.save = function(e) {
       var password, passwordConfirmation, username;
       e.preventDefault();
-      console.log('save');
       if (this.model.isNew()) {
         username = this.$('.input-title').val();
         if (!username) {
@@ -2331,7 +2294,6 @@
 
     RestaurantUserShowView.prototype.destroy = function(e) {
       e.preventDefault();
-      console.log('destroy');
       return this.trigger('destroy', this.model);
     };
 
@@ -2484,7 +2446,6 @@
       var collection, listView, mainView, view;
       window.model = model;
       collection = this.Surveys;
-      console.log('showSurvey', model);
       mainView = model.id != null ? new SurveyShowView({
         model: model
       }) : new SurveyEditView({
@@ -2505,11 +2466,9 @@
 
     App.prototype.showSurveyById = function(id) {
       var _this = this;
-      console.log('showSurveyById', id);
       return $.when(this.Surveys.load()).then(function(collection) {
         var model;
         model = collection.get(id) || collection.getByCid(id);
-        console.log('showSurveyById', model);
         if (model != null) {
           return _this.showSurvey(model);
         } else {
@@ -2542,7 +2501,6 @@
           return $.when(collection.load()).then(function(collection) {
             var mainView, model, view;
             if (window.model = model = collection.get(id)) {
-              console.log('existing information', model);
               mainView = new InformationGroupShowView({
                 model: model
               });
@@ -2572,7 +2530,6 @@
           listView: listView,
           addView: addView
         });
-        console.log('info');
         this.setView(view);
         return collection.load();
       }
@@ -2668,7 +2625,6 @@
       } else if (id != null) {
         return $.when(collection.load()).then(function(collection) {
           if (model = collection.get(id)) {
-            console.log('existing place', model);
             mainView = new PlaceShowView({
               model: model
             });
@@ -2762,7 +2718,6 @@
                     password: password
                   }, {
                     success: function() {
-                      console.log('after creation');
                       return _this.navigate("" + path + "/" + (model.id.toURL()), true);
                     }
                   });
@@ -2935,7 +2890,6 @@
     MenuItems.prototype.comparator = function(menuItem) {
       var a;
       a = (menuItem.get('is_featured') ? -1000 : 0) + menuItem.get('price');
-      console.log('a', a);
       return a;
     };
 
@@ -3021,7 +2975,6 @@
     };
 
     RestaurantMenuItemView.prototype.render = function() {
-      console.log('is_featured', this.model.get('is_featured'));
       this.$el.html(this.template().render(this.model.toJSON()));
       return this;
     };
@@ -3052,7 +3005,6 @@
     };
 
     RestaurantView.prototype.initialize = function() {
-      console.log('RestaurantView', this.model);
       this.model.on('change', this.render);
       this.model.on('reset', this.render);
       return RestaurantView.__super__.initialize.apply(this, arguments);
@@ -3066,7 +3018,6 @@
 
     RestaurantView.prototype.save = function(e) {
       e.preventDefault();
-      console.log('save');
       this.model.set({
         address: this.$('.input-address').val(),
         phone: this.$('.input-phone').val(),
@@ -3077,14 +3028,12 @@
 
     RestaurantView.prototype.create = function(e) {
       e.preventDefault();
-      console.log('@collection', this.collection);
       return this.collection.create(new MenuItem);
     };
 
     RestaurantView.prototype.render = function() {
       this.$el.html(this.template().render(this.model.toJSON()));
       this.$collection = this.$('#menu');
-      console.log(this.$collection);
       return RestaurantView.__super__.render.apply(this, arguments);
     };
 
@@ -3140,7 +3089,6 @@
         return loginView.on('login', function(user) {
           var _this = this;
           window.globals.current_user = user.get('username');
-          console.log('login', user);
           return user.fetch({
             success: function() {
               var id, _ref;

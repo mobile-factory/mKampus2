@@ -1464,14 +1464,15 @@ class InformationGroup extends StackMob.Model
         @fetchElementsPromise.resolve(@informations)
     @fetchElementsPromise
 
-class InformationGroups extends LoadableCollection
-  model: InformationGroup
-  
+class SortableCollection extends LoadableCollection
   comparator: (model) ->
     model.get('position')
   
   parse: (response) ->
     _(response).reject (model) -> model.is_deleted
+
+class InformationGroups extends SortableCollection
+  model: InformationGroup
   
 class InformationGroupView extends SelectableView
 
@@ -1801,7 +1802,7 @@ class ContactGroup extends InformationGroup
   schemaName: 'contact_group'
   collectionClass: ContactElements
 
-class ContactGroups extends LoadableCollection
+class ContactGroups extends SortableCollection
   model: ContactGroup
   
   comparator: (model) ->

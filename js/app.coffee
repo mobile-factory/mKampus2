@@ -145,7 +145,6 @@ helper layout: (options) ->
   """
   {{{navbar}}}
   {{{content}}}
-  {{{footer}}}
   """.render {content: options.fn(@)}
 
 helper timeHuman: (time) ->

@@ -140,7 +140,7 @@
 
   helper({
     layout: function(options) {
-      return "{{{navbar}}}\n{{{content}}}\n{{{footer}}}".render({
+      return "{{{navbar}}}\n{{{content}}}".render({
         content: options.fn(this)
       });
     }

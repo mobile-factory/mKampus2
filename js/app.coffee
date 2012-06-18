@@ -103,7 +103,7 @@ helper navbar: (context) ->
   ]
 
 partial footer: """
-<footer class="hidden-phone">
+<footer>
   <a href="http://www.mobilefactory.com/pl/mkampus/"><img src="/img/mkampus.png"/></a>
   <img src="/img/logo.png" />
 </footer>
@@ -2703,7 +2703,7 @@ class RestaurantView extends CollectionView
           </div>
         </div>
       </div>
-      {{{footer}}}
+      <!-- {{{footer}}} -->
     </div>"""
   
   initialize: ->

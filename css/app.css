@@ -1,4 +1,5 @@
 @import 'bootstrap.css';
+@import 'bootstrap-responsive.css';
 h3 > i {
   margin-top: 4px;
 }
@@ -86,6 +87,14 @@ textarea.add,
 .configurable {
   background-image: url("/img/down-arrow.png");
 }
+@media (min-width: 768px) {
+  .selectable:nth-last-child(2) {
+    border-bottom: 0;
+  }
+  .selectable:nth-last-child(3) {
+    border-bottom: 0;
+  }
+}
 .form-actions.section {
   border-top: 0;
   margin-bottom: 0;
@@ -121,6 +130,11 @@ input[type=text].add {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
+@media (max-width: 767px) {
+  input[type=text].add {
+    height: 40px;
+  }
+}
 .blue {
   background-color: #0074cc;
 }
@@ -151,17 +165,42 @@ footer {
   padding-top: 20px;
   padding-bottom: 20px;
 }
-.item-view .category {
-  padding-bottom: 35px;
+@media (min-width: 768px) {
+  .item-view .category {
+    padding-bottom: 35px;
+  }
 }
-body {
-  padding-top: 40px;
+@media (max-width: 767px) {
+  .category {
+    padding-top: 20px;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: -1px;
+  }
 }
-.navbar-inner > .container {
-  padding-left: 20px;
+@media (min-width: 980px) {
+  body {
+    padding-top: 40px;
+  }
 }
-.notification {
-  min-height: 150px;
+@media (max-width: 767px) {
+  body {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  body .navbar-fixed-top {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+@media (min-width: 768px) {
+  .navbar-inner > .container {
+    padding-left: 20px;
+  }
+}
+@media (min-width: 768px) {
+  .notification {
+    min-height: 150px;
+  }
 }
 .form-actions .btn-toolbar {
   margin-top: 0;

@@ -112,7 +112,7 @@
   });
 
   partial({
-    footer: "<footer class=\"hidden-phone\">\n  <img src=\"/img/logo.png\" />\n</footer>"
+    footer: "<footer class=\"hidden-phone\">\n  <a href=\"http://www.mobilefactory.com/pl/mkampus/\"><img src=\"/img/mkampus.png\"/></a>\n  <img src=\"/img/logo.png\" />\n</footer>"
   });
 
   helper({
@@ -211,7 +211,7 @@
       return LoginView.__super__.constructor.apply(this, arguments);
     }
 
-    LoginView.prototype.template = "<div class=\"container\" id=\"login\">\n  <form action=\"POST\" class=\"form-horizontal\">\n  <div class=\"modal\" style=\"position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;\">\n    <div class=\"modal-header\">\n      <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>\n    </div>\n    <div class=\"modal-body\">\n        <fieldset>\n\n          <div class=\"control-group\">\n            <label for=\"login-input\" class=\"control-label\">Login</label>\n            <div class=\"controls\"><input type=\"text\" id=\"login-input\" class=\"input-xlarge\" autofocus /></div>\n          </div>\n          <div class=\"control-group\">\n            <label for=\"password-input\" class=\"control-label\">Hasło</label>\n            <div class=\"controls\"><input type=\"password\" id=\"password-input\" class=\"input-xlarge\" /></div>\n          </div>\n        </fieldset>\n\n    </div>\n    <div class=\"modal-footer\">\n      <input id=\"login-button\" type=\"submit\" class=\"btn btn-big btn-primary\" value=\"Zaloguj\" />\n    </div>\n  </div>\n  </form>\n  {{{ footer }}}\n</div>";
+    LoginView.prototype.template = "<div class=\"container\" id=\"login\">\n\n  <form action=\"POST\" class=\"form-horizontal\">\n  <div class=\"modal\" style=\"position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;\">\n    <div class=\"modal-header\">\n      <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>\n    </div>\n    <div class=\"modal-body\">\n        <fieldset>\n\n          <div class=\"control-group\">\n            <label for=\"login-input\" class=\"control-label\">Login</label>\n            <div class=\"controls\"><input type=\"text\" id=\"login-input\" class=\"input-xlarge\" autofocus /></div>\n          </div>\n          <div class=\"control-group\">\n            <label for=\"password-input\" class=\"control-label\">Hasło</label>\n            <div class=\"controls\"><input type=\"password\" id=\"password-input\" class=\"input-xlarge\" /></div>\n          </div>\n        </fieldset>\n\n    </div>\n    <div class=\"modal-footer\">\n      <input id=\"login-button\" type=\"submit\" class=\"btn btn-big btn-primary\" value=\"Zaloguj\" />\n    </div>\n  </div>\n  </form>\n  {{{ footer }}}\n</div>";
 
     LoginView.prototype.events = {
       submit: 'submit'
@@ -3329,12 +3329,6 @@
     }
 
     Restaurant.prototype.schemaName = 'restaurant';
-
-    Restaurant.prototype.defaults = {
-      image_url: '/img/restaurant.png',
-      image_width: 122,
-      image_height: 124
-    };
 
     return Restaurant;
 

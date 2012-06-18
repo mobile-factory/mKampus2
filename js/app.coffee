@@ -104,6 +104,7 @@ helper navbar: (context) ->
 
 partial footer: """
 <footer class="hidden-phone">
+  <a href="http://www.mobilefactory.com/pl/mkampus/"><img src="/img/mkampus.png"/></a>
   <img src="/img/logo.png" />
 </footer>
 """
@@ -173,6 +174,7 @@ class Users extends StackMob.Collection
 class LoginView extends Backbone.View
 
   template: """<div class="container" id="login">
+    
       <form action="POST" class="form-horizontal">
       <div class="modal" style="position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;">
         <div class="modal-header">
@@ -2432,10 +2434,10 @@ class App extends Backbone.Router
 class Restaurant extends ModelWithImage
   schemaName: 'restaurant'
   
-  defaults:
-    image_url: '/img/restaurant.png'
-    image_width: 122
-    image_height: 124
+  # defaults:
+  #   image_url: '/img/restaurant.png'
+  #   image_width: 122
+  #   image_height: 124
 
 class Restaurants extends StackMob.Collection
   model: Restaurant

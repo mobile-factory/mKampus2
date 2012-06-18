@@ -224,7 +224,6 @@ class LoginView extends Backbone.View
     @$('#login-input').focus()
     @
 
-
 ################### BACKBONE EXTENSIONS ###################
 
 class LoadableCollection extends StackMob.Collection
@@ -235,9 +234,43 @@ class LoadableCollection extends StackMob.Collection
         @fetchPromise.resolve(@)
     @fetchPromise
 
-class CollectionView extends Backbone.View
+class View extends Backbone.View
+  
+  getImagePreview: -> @$('.image-preview')
+  
+  onImageChange: (e) ->
+    e.stopPropagation()
+    e.preventDefault()
+    file = e.target.files[0]
+    reader = new FileReader()
+    reader.onload = (e) =>
+      $image = @getImagePreview()
+      
+      # console.log '.image-preview', $image
+      # console.log 'image', e.target.result
+      
+      $image.attr('src', e.target.result)
+      width = $image[0].clientWidth
+      height = $image[0].clientHeight
+      @model.set {width, height}
+      base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length)
+      fileName = file.name
+      fileType = file.type
+      @model.setBinaryFile('image_url', fileName, fileType, base64Content)
+      # console.log 'set binary', @model.get('image_url')
+      @model.setBinaryFile('image_content', fileName, fileType, base64Content)
+    fileContent = reader.readAsDataURL(file)
+  
+class CollectionView extends View
+  
+  waitForCollection: ->
+    if @$collection
+      # console.log 'wait'
+      @$collection.html """<section class="item loading"><img src="/img/progress.gif"/></section>"""
+  
   initialize: ->
     # console.log 'CollectionView initialized'
+    @waitForCollection()
     
     @itemView or= @options.itemView
     $.when(@collection).then (collection) =>
@@ -250,24 +283,30 @@ class CollectionView extends Backbone.View
     $collection = @$collection or @$el
     # console.log '$collection', $collection
     $.when(@collection).then (collection) =>
+      # collection.sort()
       # console.log 'CollectionView addAll from collection', collection, collection.length, @itemView
+      # if collection.length > 0
       $collection.empty()
+      # console.log 'empty'
       collection.each @addOne
 
   addOne: (model) =>
+    # console.log 'add', model
     options = _.extend(_.clone(@options), {model, @collection})
     view = new @itemView options
     # console.log 'view', view
     if @$collection?
-      if @options.prepend?
-        @$collection.prepend view.render().el
-      else
-        # console.log '@$collection', @$collection 
-        @$collection.append view.render().el
+      @$collection.append view.render().el
+      # if @options.prepend?
+      #   @$collection.prepend view.render().el
+      # else
+      #   # console.log '@$collection', @$collection 
+      #   @$collection.append view.render().el
 
   render: ->
     # console.log 'CollectionView rendered', @
     @$collection or= @$el
+    @waitForCollection()
     @addAll()
     @
 
@@ -309,7 +348,7 @@ class MenuLayout extends Backbone.View # title, addView, listView
       <div class="container">
         <section>
           <div class="row menu">
-            <div class="span12 empty">...</div>
+            <div class="progress"><img src="/img/progress.gif"></img></div>
           </div>
         </section>
       </div>
@@ -333,6 +372,7 @@ class MenuLayout extends Backbone.View # title, addView, listView
     
     addView.render()
     listView.render()
+    # $list.html listView.render().el 
     @
 
 class SidebarLayout extends Backbone.View
@@ -364,6 +404,7 @@ class SidebarLayout extends Backbone.View
     
     $main = @$('.main')
     $menu = @$('.menu')
+    
     mainView.setElement $main
     mainView.render()
     listView.setElement $menu
@@ -371,21 +412,31 @@ class SidebarLayout extends Backbone.View
     
     @
 
-class SelectableView extends Backbone.View
+class SelectableView extends View
 
   labelAttribute: 'name'
   placeholderLabel: 'Nowy element'
-
+  
+  className: 'selectable sortable span4'
+  
+  attributes: ->
+    'data-id': @model.id
+    'data-sortable-id': @model.id
+  
   template: -> """
-    <div class="selectable span4" data-id="{{ id }}">
+    <!-- <div class="selectable sortable span4" data-id="{{ id }}" data-sortable-id= "{{ id }}"> -->
+    <!-- <div class="{{#if hasChanged}} waiting {{/if}}"> -->
       <p class="date">{{{ timeSwitch createddate }}}</p>
       <p class="content">
-        {{#if #{@labelAttribute} }} {{ #{@labelAttribute} }} {{else}} #{@placeholderLabel}{{/if}}
+        {{#if #{@labelAttribute} }} {{ #{@labelAttribute} }} {{else}} #{@placeholderLabel} {{/if}}
       </p>
-    </div>
+    <!-- </div> -->
     """
 
   initialize: ->
+    @$el.data('id', @model.id)
+    @$el.data('sortable-id', @model.id)
+    
     @model.on 'change', @render
     @model.on 'reset', @render
     @model.on 'sync', @render
@@ -398,9 +449,73 @@ class SelectableView extends Backbone.View
     @trigger 'select', @model
 
   render: =>
-    @$el.html @template().render _.extend(@model.toJSON(), {id: @model.id})
+    @$el.html @template().render _.extend(@model.toJSON(), {id: @model.id, hasChanged: @model.hasChanged()})
+    
+    # if @model.hasChanged()
+    #   # console.log 'waiting', @model.get 'name'
+    #   @$el.addClass('waiting')
+    # else
+    #   # console.log 'not waiting', @model.get 'name'
+    #   @$el.removeClass('waiting')
+    @$el.toggleClass('waiting', @model.hasChanged())
     window.app.updateLinks()
     @    
+
+
+class Image extends StackMob.Model
+  schemaName: 'image'
+
+class ModelWithImage extends StackMob.Model
+
+  initialize: ->
+    @on 'sync', @updateImageModel
+
+  updateImageModel: =>
+    image = new Image
+      image_id: @get('image')
+      width: @get('width')
+      height: @get('height')
+      url: @get('image_url')
+    image.save {}, error: ->
+      image.create()
+  
+  defaultImage: -> 
+  
+  getImageURL: ->
+    if img = @get('image_url')
+      # console.log 'ModelWithImage.getImageURL()', img
+      imageData = img.split("\n")
+      if imageData.length is 5
+        type = imageData[0].split(" ")[1]
+        # console.log 'image type', type
+        content = imageData[4]
+        "data:#{type};base64,#{content}"
+      else
+        img
+    else
+      @defaultImage()
+  
+  templateData: ->
+    _.extend @toJSON(),
+      { image_url: @getImageURL() }
+
+  save: ->
+    @beforeSave()
+    super
+
+  beforeSave: =>
+    @preventImageDestruction()
+    @fallbackToDefaultImage()
+
+  preventImageDestruction: => # (yes, StackMob do this by default)
+    content = @get('image_content')
+    url = @get('image_url')
+    if content and content isnt url
+      @set image_url: content
+
+  fallbackToDefaultImage: =>
+    if @id and not @has('image')
+      @set image: "#{@constructor.name}_#{@id}"
 
 ################### NOTIFICATIONS ###################
 
@@ -412,8 +527,11 @@ class Notification extends StackMob.Model
   @maxDisplayLength: 100
   
 
-class Notifications extends StackMob.Collection
+class Notifications extends LoadableCollection
   model: Notification
+  
+  comparator: (model) ->
+    -model.get('createddate')
 
 class NotificationView extends Backbone.View
   className: 'notification span4'
@@ -569,21 +687,171 @@ class Survey extends StackMob.Model
 class Surveys extends LoadableCollection
   model: Survey
   
-  comparator: (survey) ->
-    -survey.get('createddate')
+  comparator: (model) ->
+    -model.get('createddate')
+
+  
+class Answer extends StackMob.Model
+  schemaName: 'answer'
+
+
+class Answers extends StackMob.Collection
+  model: Answer
+  
+  toJSON: ->
+    null
+  
+  getContents: ->    
+    _(@pluck('content').map((content) ->
+      try
+        JSON.parse(content)
+      catch error
+        content
+    )).reject (element) -> _(element).isNull()
+
+
+# class RadioAnswers extends Answers
+#   
+#   toJSON: ->
+#     results = {}
+#     _(@getContents()).each (id) ->
+#       results[id] or= 0
+#       results[id] += 1
+#     results
+# 
+# 
+# class CheckboxAnswers extends Answers
+#   
+#   toJSON: ->
+#     results = {}
+#     _(@getContents()).each (array) ->
+#       _(array).each (id) ->
+#         results[id] or= 0
+#         results[id] += 1
+#     results
+# 
+# 
+# class TextAnswers extends Answers
+#   
+#   toJSON: ->
+#     @getContents()
+# 
+# 
+# class RateAnswers extends Answers
+#   
+#   toJSON: ->
+#     contents = @getContents()
+#     sum = _(contents).reduce(((memo, element) -> memo + element), 0)
+#     sum / contents.length
+
   
 class Question extends StackMob.Model
   schemaName: 'question'
   
-  validate: (attrs) ->  
-  
   defaults:
-    type: "1"
+    type: '1'
     content: ''
     answers: ''
+  
+  # Answers: ->
+  #   switch @get('type')
+  #     when '1' then new RateAnswers()
+  #     when '2' then new CheckboxAnswers()
+  #     when '3' then new TextAnswers()
+  #     when '4' then new RadioAnswers()
+  #     else new Answers()
+
+  getUserAnswers: ->
+    unless @fetchAnswersPromise?
+      @fetchAnswersPromise = $.Deferred()
+      @questions =  new Answers()
+      if @id?
+        fetchMyAnswers = new StackMob.Collection.Query()
+        fetchMyAnswers.equals('question', @id)
+        @questions.query(fetchMyAnswers)
+        @questions.on 'reset', => @fetchAnswersPromise.resolve(@questions)
+      else
+        @fetchAnswersPromise.resolve(@questions)
+    @fetchAnswersPromise
+  
+  getResults: ->
+    promise = $.Deferred()
+    $.when(@getUserAnswers()).then (userAnswers) =>
+      # console.log 'Question.getUserAnswers() ->', answers.getContents(), @get('content')
+      contents = userAnswers.getContents()
+      promise.resolve switch @get('type')
+        when '1' #rate
+          avg = if contents.length is 0
+            0
+          else
+            sum = _(contents).reduce(((memo, element) -> memo + Number(element)), 0)
+            sum / contents.length
+          # console.log 'rate', avg, @get('content')
+          avg * 20
+        when '4' #text
+          # console.log 'text', contents, @get('content')
+          # console.log 'text contents', contents
+          contents
+          
+        when '3' # 'checkbox'
+          results = {}
+          # console.log '@getAnswerNames()', @getAnswerNames(), @
+          _(@getAnswerNames()).each (name, index) ->
+            results[index] = {name, votes: 0}
+          _(contents).each (content) ->
+            _(content).each (index) ->
+              if results[index]
+                results[index].votes += 1
+          array = _(results).map (element) -> element
+          # console.log 'checkbox/radio', array, @get('content')
+          array
+          
+        when '2' # 'radio'
+          results = {}
+          # console.log '@getAnswerNames()', @getAnswerNames(), @
+          
+          _(@getAnswerNames()).each (name, index) ->
+            results[index] = {name, votes: 0}
+          
+          _(contents).each (index) ->
+            if results[index]
+              results[index].votes += 1
+          # console.log 'kot3', results
+          array = _(results).map (element) -> element
+          # console.log 'checkbox/radio', array, @get('content')
+          array
+        else
+          null
+    promise
+  
+  getAnswerNames: ->
+    try
+      JSON.parse(@get('answers'))
+    catch error
+      try
+        @get('answers')[1...-1].split(',')
+      catch error
+        []
+  
+  setAnswerNames: (answersArray) ->
+    @set answers: try
+      JSON.stringify(answersArray)
+    catch error
+      try
+        "[" + answersArray.join(",") + "]"
+      catch error
+        "[]"
+      
 
 class Questions extends StackMob.Collection
   model: Question
+  
+  types:
+    1: 'rate'
+    2: 'checkbox'
+    3: 'text'
+    4: 'radio'
+      
   
   # initialize: ->
   #   super
@@ -600,7 +868,7 @@ class Questions extends StackMob.Collection
 class SurveyView extends Backbone.View
   
   template: """
-    <div class="survey selectable span4 {{#if active}}active{{/if}}">
+    <div class="survey selectable span4 {{#if active}} active {{/if}}">
       <p class="date">{{{ timeSwitch createddate }}}</p>
       <p class="content">
         {{#if survey_id}}
@@ -610,7 +878,6 @@ class SurveyView extends Backbone.View
           {{else}}
             <i class="icon-pencil"></i>
           {{/if}}
-          
         {{/if}}
         {{ title }}
       </p>
@@ -622,13 +889,15 @@ class SurveyView extends Backbone.View
   
   initialize: ->
     @model.on 'change', @render
-    @collection.on 'show', @onSelect
+    $.when(@collection).then (collection) =>
+      collection.on 'show', @onSelect
   
   onSelect: =>
     @render()
 
   select: ->
-    @collection.trigger 'show', @model
+    $.when(@collection).then (collection) =>
+      collection.trigger 'show', @model
   
   render: =>
     $.when(@collection).then (collection) =>
@@ -794,10 +1063,22 @@ class QuestionEditView extends Backbone.View
     '4': 'comment'
   
   serializeAnswers: (answersArray) ->
-    "[" + answersArray.join(",") + "]"
+    try
+      JSON.stringify(answersArray)
+    catch error
+      try
+        "[" + answersArray.join(",") + "]"
+      catch error
+        "[]"
 
   deserializeAnswers: (answersSerialized) ->
-    answersSerialized[1...-1].split(',')
+    try
+      JSON.parse(answersSerialized)
+    catch error
+      try
+        answersSerialized[1...-1].split(',')
+      catch error
+        []
     
   data: ->
     types = [
@@ -824,7 +1105,6 @@ class QuestionEditView extends Backbone.View
     @$el.html @template.render @data()
     @$name = @$('.name')
     @$answers = @$('.answers')
-    
     type = @model.get 'type'
     @$answers.toggleClass 'hidden', type not in ["2", "3"]
     @$('.type').each ->
@@ -838,7 +1118,54 @@ class QuestionEditView extends Backbone.View
 class QuestionView extends Backbone.View
   tagName: 'section'
   
-  template: """
+  typeTemplates:
+    '1': -> """
+      {{#results}}
+        <div class="span8 item">
+          <div class="row-fluid">
+            <div class="span10">
+              <div class="progress">
+                <div class="bar" style="width: {{this}}%;"></div>
+              </div>
+            </div>
+            <div class="span2">
+              <span class="badge">{{ this }} %</span>
+            </div>
+          </div>
+        </div>
+      {{/results}}
+      """ # rate
+    '2': -> """
+      {{#results}}
+        <div class="span4 item">
+          <label class="radio">
+            <input type="radio" disabled="disabled" />
+            {{ name }}
+            <span class="badge">{{ votes }}</span>
+          </label>
+        </div>
+      {{/results}}
+      """ # radio
+    '3': -> """
+      {{#results}}
+        <div class="span4 item">
+          <label class="checkbox">
+            <input type="checkbox" disabled="disabled" />
+            {{ name }}
+            <span class="badge">{{ votes }}</span>
+          </label>
+        </div>
+      {{/results}}
+      """ # checkbox
+    '4': -> """
+      {{#results}}
+        <div class="span4 item">
+          {{ this }}
+        </div>
+      {{/results}}
+      """ # text
+  
+  template: => """
     <div class="item">
       <h3>
         <i class="icon-{{icon}}"></i>
@@ -846,22 +1173,7 @@ class QuestionView extends Backbone.View
       </h3>
     </div>
     <div class="row">
-      {{#checkAnswers}}
-        <div class="span4 item">
-          <label class="checkbox">
-            <input type="checkbox" disabled="disabled" />
-            {{ this }}
-          </label>
-        </div>
-      {{/checkAnswers}}
-      {{#radioAnswers}}
-        <div class="span4 item">
-          <label class="radio">
-            <input type="radio" disabled="disabled" />
-            {{ this }}
-          </label>
-        </div>
-      {{/radioAnswers}}
+      #{@typeTemplates[@model.get('type')]()}
     </div>"""
   
   icons:
@@ -871,10 +1183,22 @@ class QuestionView extends Backbone.View
     '4': 'comment'
   
   serializeAnswers: (answersArray) ->
-    "[" + answersArray.join(",") + "]"
+    try
+      JSON.stringify(answersArray)
+    catch error
+      try
+        "[" + answersArray.join(",") + "]"
+      catch error
+        "[]"
 
   deserializeAnswers: (answersSerialized) ->
-    answersSerialized[1...-1].split(',')
+    try
+      JSON.parse(answersSerialized)
+    catch error
+      try
+        answersSerialized[1...-1].split(',')
+      catch error
+        []
   
   data: ->
     types = [
@@ -897,7 +1221,11 @@ class QuestionView extends Backbone.View
     _.extend @model.toJSON(), {types, textAnswers, checkAnswers, radioAnswers, icon: @icons[type]}
   
   render: ->
-    @$el.html @template.render @data()
+    @$el.html """<div class="loading"><img src="/img/progress.gif"/></div>"""
+    $.when(@model.getResults()).then (results) =>
+      data = _.extend(@data(), {results: results})
+      @$el.html @template().render data
+    # @$el.html @template.render @data()
     @
   
 
@@ -961,7 +1289,7 @@ class SurveyEditView extends CollectionView
         Usuń ankietę
       </button>
       
-      <button id="survey-submit" class="btn btn-large btn-primary pull-right top-level-actions">
+      <button id="survey-submit" data-toggle="button" class="btn btn-large btn-primary pull-right top-level-actions">
         <i class="icon-ok icon-white"></i>
         Opublikuj ankietę
       </button>
@@ -1002,6 +1330,13 @@ class SurveyEditView extends CollectionView
     e?.preventDefault()
     # console.log 'publish'
     @model.save()
+    # @$('#survey-submit').button()
+    
+    button = @$('#survey-submit')
+    # console.log 'survey submit', button
+    
+    # @$('#survey-submit').button('toggle')
+    @$('#survey-submit').addClass('disabled')
   
   destroy: (e) =>
     e.preventDefault()
@@ -1040,13 +1375,6 @@ class SurveyEditView extends CollectionView
       @$titleSection.removeClass('active')
       $.when(@collection).then (collection) =>
         collection.trigger 'close'
-      # $.when(@collection).then (collection) =>
-      #   if collection.length > 0
-      #     collection.trigger 'close'
-      #   else
-      #     question = new Question
-      #     collection.add question
-      #     collection.trigger 'edit', question
 
   openTitle: ->
     @$titleSection.addClass('active')
@@ -1070,14 +1398,13 @@ class SurveyEditView extends CollectionView
     @$titleEdit = @$('#title-edit')
     @$titleShow = @$('#title-show')
     @$titleSubmit = @$('#title-submit')
-    
     @updateState()
     super
     @
 
 ################### INFORMATIONS ########################
 
-class InformationElement extends StackMob.Model
+class InformationElement extends ModelWithImage
   schemaName: 'information_element'
   
   initialize: ->
@@ -1088,8 +1415,7 @@ class InformationElement extends StackMob.Model
     type: 'text'
   
   parse: (data) ->
-    # console.log 'InformationElement::parse (data)', data
-    if typeof data is "object"
+    if typeof data is 'object'
       data
     else
       super
@@ -1102,8 +1428,8 @@ class InformationElements extends StackMob.Collection
   
   newPosition: ->
     if @length > 0
-      sorted = _(@pluck('position').sort((a,b) -> a - b))
-      console.log 'sorted', sorted
+      sorted = _(@pluck('position').sort((a, b) -> a - b))
+      # console.log 'sorted', sorted
       sorted.last() + 1
     else
       0
@@ -1141,22 +1467,111 @@ class InformationGroup extends StackMob.Model
 class InformationGroups extends LoadableCollection
   model: InformationGroup
   
+  comparator: (model) ->
+    model.get('position')
+  
   parse: (response) ->
     _(response).reject (model) -> model.is_deleted
   
 class InformationGroupView extends SelectableView
 
-class InformationElementView extends Backbone.View
+class ElementView extends View
+  
+  events: ->
+    'click .show': 'open'
+    'click .save-button': 'save'
+    'submit': 'save'
+    'click .destroy-button': 'destroy'
+    'click .up-button': 'up'
+    'click .down-button': 'down'
+    # 'change .image-input': 'onImageChange'
+  
+  up: (event) ->
+    event.preventDefault()
+    # console.log 'up'
+    sortedAbove = _(@model.collection.filter((model) => model.get('position') < @model.get('position'))).sortBy((m) -> m.get('position'))
+    if sortedAbove.length > 0
+      swapWith = _(sortedAbove).last()
+      myPosition = @model.get('position')
+      @model.set position: swapWith.get('position')
+      swapWith.set position: myPosition
+      @model.collection.sort()
+      @model.save({}, {wait:true})
+      swapWith.save({}, {wait:true})
+  
+  down: (event) ->
+    event.preventDefault()
+    # console.log 'down'
+    sortedAbove = _(@model.collection.filter((model) => model.get('position') > @model.get('position'))).sortBy((m) -> m.get('position'))
+    if sortedAbove.length > 0
+      swapWith = _(sortedAbove).first()
+      myPosition = @model.get('position')
+      @model.set position: swapWith.get('position')
+      swapWith.set position: myPosition
+      @model.collection.sort()
+      @model.save({}, {wait:true})
+      swapWith.save({}, {wait:true})
+  
+  initialize: ->
+    # @model.on 'change', @render, @
+    @model.on 'sync', @onSync, @
+    @model.on 'change', @render, @
+  
+  open: ->
+    @model.isOpen = true
+    @render()
+  
+  persist: ->
+    type = @model.get('type')
+    if type is "text"
+      @model.set text: @$(".text-input").val()
+    else if type is "title"
+      @model.set title: @$(".title-input").val()
+    @model.save({}, {wait: true})
+  
+  save: (event) ->
+    event.preventDefault()
+    @persist()
+    # console.log 'after save'
+    @close()
+  
+  destroy: (event) ->
+    event.preventDefault()
+    @model.save is_deleted: true
+  
+  onSync: ->
+    if @model.get('is_deleted') is true
+      @model.collection.remove @model
+      @remove()
+    else
+      @render()
+  
+  close: ->
+    @model.isOpen = false
+    @render()
+  
+  render: ->
+    # console.log 'model render', @model.toJSON(), @model.changedAttributes()
+    data = if @model.templateData? then @model.templateData() else @model.toJSON()
+    @$el.html @template().render _.extend(data, {isOpen: @model.isOpen, hasChanged: @model.changedAttributes()})
+    @
+
+class InformationElementView extends ElementView
   
   modelId: 'information_element_id'
   
   templateShow:
     text: -> """<p>{{ text }}</p>"""
     title: -> """<h3>{{ title }}</h3>"""
+    image: -> """<img src="{{ image_url }}" />"""
   
   templateEdit:
     text: -> """<textarea class="text-input add" type="text" rows="5" autofocus="autofocus" placeholder="Treść nowego akapitu">{{ text }}</textarea>"""
-    title: -> """<input class="title-input add" type="text" autofocus="autofocus" placeholder="Treść nowego tytułu" value="{{ title }}"/>"""
+    title: -> """<input class="title-input add" type="text" autofocus="autofocus" placeholder="Treść nowego tytułu" value="{{ title }}" />"""
+    image: -> """
+      <p><img class="image-preview" src="{{ image_url }}"/></p>
+      <p><input type="file" class="image-input" name="image" /></p>
+      """
   
   template: -> """
     <section class="editable sortable {{#if isOpen}} active {{/if}} {{#if hasChanged}} waiting {{/if}}" data-sortable-id="{{#{@modelId}}}">
@@ -1198,81 +1613,49 @@ class InformationElementView extends Backbone.View
       </div>
     </section>"""
   
-  events:
-    'click .show': 'open'
-    'click .save-button': 'save'
-    'submit': 'save'
-    'click .destroy-button': 'destroy'
-    'click .up-button': 'up'
-    'click .down-button': 'down'
-  
-  up: (event) ->
-    event.preventDefault()
-    # console.log 'up'
-    sortedAbove = _(@model.collection.filter((model) => model.get('position') < @model.get('position'))).sortBy((m) -> m.get('position'))
-    if sortedAbove.length > 0
-      swapWith = _(sortedAbove).last()
-      myPosition = @model.get('position')
-      @model.set position: swapWith.get('position')
-      swapWith.set position: myPosition
-      @model.collection.sort()
-      @model.save({}, {wait:true})
-      swapWith.save({}, {wait:true})
-  
-  down: (event) ->
-    event.preventDefault()
-    # console.log 'down'
-    sortedAbove = _(@model.collection.filter((model) => model.get('position') > @model.get('position'))).sortBy((m) -> m.get('position'))
-    if sortedAbove.length > 0
-      swapWith = _(sortedAbove).first()
-      myPosition = @model.get('position')
-      @model.set position: swapWith.get('position')
-      swapWith.set position: myPosition
-      @model.collection.sort()
-      @model.save({}, {wait:true})
-      swapWith.save({}, {wait:true})
-  
-  initialize: ->
-    @model.on 'change', @render, @
-    @model.on 'sync', @render, @
-  
+  events: ->
+    _.extend super,
+      {'change .image-input': 'onImageChange'}
+    
   open: ->
-    @model.isOpen = true
-    @render()
+    super
+    if @model.get('type') is 'image'
+      @$('input[type=file]').click()
+
+class SortableCollectionView extends CollectionView
   
-  persist: ->
-    type = @model.get('type')
-    if type is "text"
-      @model.set text: @$(".text-input").val()
-    else if type is "title"
-      @model.set title: @$(".title-input").val()
-    @model.save()
+  className: 'sortable-ui'
   
-  save: (event) ->
-    event.preventDefault()
-    @persist()
-    # console.log 'after save'
-    @close()
+  events: ->
+    {'sortstop': 'sort'}
   
-  destroy: (event) ->
-    event.preventDefault()
-    @model.save is_deleted: true
-    @model.collection.remove @model
-    @remove()
-  
-  close: ->
-    @model.isOpen = false
-    @render()
+  afterSort: (collection) ->
+    
+  sort: (event) =>
+    # console.log 'sort stop', event
+    $.when(@collection).then (collection) =>      
+      @$('.sortable').each (index, element) =>
+        id = $(element).data('sortable-id')
+        model = collection.get(id)
+        unless model.get('position') is index
+          model.set({position: index})
+          model.save()
+      @afterSort collection
   
   render: ->
-    @$el.html @template().render _.extend(@model.toJSON(), {isOpen: @model.isOpen, hasChanged: @model.changedAttributes()})
+    super
+    @$collection.sortable({})
+    @$collection.disableSelection()
     @
 
-class GroupShowView extends CollectionView
+class MenuCollectionView extends SortableCollectionView
+  afterSort: (collection) ->
+    collection.sort()
+
+class GroupShowView extends SortableCollectionView
   
   titlePlaceholder: 'Tytuł nowego działu'
   labelAttribute: 'name'
-  
   itemView: InformationElementView
   
   initialize: ->
@@ -1282,19 +1665,10 @@ class GroupShowView extends CollectionView
   actionsButtonGroupTemplate: -> ""
   
   events: ->
-    'click #information-submit': 'save'
-    'click .destroy': 'destroy'
-    'sortstop #elements': 'sort'
-  
-  sort: (event) ->
-    # console.log 'sort stop', event
-    $.when(@collection).then (collection) =>
-      @$('.sortable').each (index, element) ->
-        id = $(element).data('sortable-id')
-        model = collection.get(id)
-        unless model.get('position') is index
-          model.set({position: index})
-          model.save()
+    _.extend super,
+    { 'click #information-submit': 'save'
+    , 'click .destroy': 'destroy'
+    }
   
   persist: ->
     @model.set name: @$('#title-input').val()
@@ -1306,7 +1680,7 @@ class GroupShowView extends CollectionView
   destroy: ->
     @model.save({is_deleted: true})
     @model.collection.remove @model
-    app.navigate 'informations', true
+    app.navigate @navigateToAfterDelete, true
   
   template: -> """
     <div class="editable active" id="title-section">
@@ -1347,54 +1721,53 @@ class GroupShowView extends CollectionView
   render: ->
     @$el.html @template().render @model.toJSON()
     @$collection = @$('#elements')
-    @$collection.sortable({})
-    @$collection.disableSelection()
+    @$("[rel='tooltip']").tooltip({animation: false})
     super
 
 
 class InformationGroupShowView extends GroupShowView
   
+  navigateToAfterDelete: 'informations'
+  
   events: ->
     _.extend super,
-      'click .create-text': 'createText'
-      'click .create-title': 'createTitle'
+      'click .create-text': @createElement('text')
+      'click .create-title': @createElement('title')
+      'click .create-image': @createElement('image')
   
-  createText: (event) ->
+  createElement: (type) -> (event) =>
     event.preventDefault()
     $.when(@model.getInformations()).then (informations) =>
-      informations.add({type: 'text', position: informations.newPosition(), information_group: @model.id})
-  
-  createTitle: (event) ->
-    event.preventDefault()
-    $.when(@model.getInformations()).then (informations) =>
-      informations.add({type: 'title', position: informations.newPosition(), information_group: @model.id})
+      informations.add({type, position: informations.newPosition(), information_group: @model.id})
 
   actionsButtonGroupTemplate: -> """
     <div class="btn-group">
-      <button class="create-text btn btn-large">
+      
+      <button class="create-title btn btn-large" rel="tooltip" title="Dodaj tytuł">
+        <i class="icon-bookmark"></i>
+      </button>
+      
+      <button class="create-text btn btn-large" rel="tooltip" title="Dodaj tekst">
         <i class="icon-align-left"></i>
-        Dodaj akapit
       </button>
       
-      <button class="btn btn-large dropdown-toggle" data-toggle="dropdown">
-        <div class="caret"></div>
+      <button class="create-image btn btn-large" rel="tooltip" title="Dodaj obrazek">
+        <i class="icon-picture"></i>
       </button>
       
-      <ul class="dropdown-menu">
-        <li>
-          <a class="create-title" href="#"><i class="icon-bookmark"></i> Dodaj tytuł</a>
-        </li>
-        <li>
-          <a class="create-text" href="#"><i class="icon-align-left"></i> Dodaj paragraf</a>
-        </li>
-      </ul>
     </div>
     """
      
 ################### CONTACTS ########################
 
-class ContactElement extends InformationElement
+class ContactElement extends StackMob.Model
   schemaName: 'contact_element'
+
+  parse: (data) ->
+    if typeof data is 'object'
+      data
+    else
+      super
   
   @types: [
       {name: 'header', id: "200", icon: 'bookmark', add: 'nagłówek'}
@@ -1417,6 +1790,7 @@ class ContactElement extends InformationElement
         else undefined
   
   initialize: ->
+    @isOpen = not @id
     @setDefaultKey()
     super
 
@@ -1429,6 +1803,9 @@ class ContactGroup extends InformationGroup
 
 class ContactGroups extends LoadableCollection
   model: ContactGroup
+  
+  comparator: (model) ->
+    model.get('location')
 
 class ContactGroupView extends InformationGroupView
 
@@ -1449,10 +1826,6 @@ class ContactElementView extends InformationElementView
     "200": -> """<h3>{{ value }}"""
     "100": -> """<h4><i class="icon-user"></i> {{ value }}</h4>"""
     "5": -> """<p><span class="info-label"><i class="icon-pencil"></i> {{ key }}</span> {{ value }}</p>"""
-    # "4": -> """<p><span class="badge badge-warning">{{ key }}</span> {{ value }}</p>"""
-    #     "3": -> """<p><span class="badge badge-info">{{ key }}</span> <a href="http://{{ value }}">{{ value }}</a></p>"""
-    #     "2": -> """<p><span class="badge badge-success">{{ key }}</span> <a href="mailto:{{ value }}">{{ value }}</a></p>"""
-    #     "1": -> """<p><span class="badge badge-important">{{ key }}</span> {{ value }}</p>"""
     "4": -> """<p><span class="info-label"><i class="icon-home"></i> {{ key }}</span> {{ value }}</p>"""
     "3": -> """<p><span class="info-label"><i class="icon-globe"></i> {{ key }}</span> <a href="http://{{ value }}">{{ value }}</a></p>"""
     "2": -> """<p><span class="info-label"><i class="icon-envelope"></i> {{ key }}</span> <a href="mailto:{{ value }}">{{ value }}</a></p>"""
@@ -1460,10 +1833,10 @@ class ContactElementView extends InformationElementView
   
   templateEditWithKey = (placeholder) -> -> """
     <div class="row-fluid">
-      <div class="span4">
+      <div class="span2">
         <input class="key add" type="text" placeholder="#{placeholder}" value="{{ key }}"/>
       </div>
-      <div class="span8">
+      <div class="span10">
         <input class="value add" type="text" autofocus="autofocus" placeholder="" value="{{ value }}"/>
       </div>
     </div>
@@ -1479,10 +1852,10 @@ class ContactElementView extends InformationElementView
     "4": templateEditWithKey 'adres'
     "5": -> """
       <div class="row-fluid">
-        <div class="span4">
+        <div class="span2">
           <input class="key add" type="text" autofocus="autofocus" placeholder="etykieta" value="{{ key }}"/>
         </div>
-        <div class="span8">
+        <div class="span10">
           <input class="value add" type="text" placeholder="" value="{{ value }}"/>
         </div>
       </div>
@@ -1499,19 +1872,18 @@ class ContactGroupShowView extends GroupShowView
 
   titlePlaceholder: 'Tytuł nowego działu'
   labelAttribute: 'name'
-  
+  navigateToAfterDelete: 'contact'  
   itemView: ContactElementView
 
-  
   creationEvents: ->
     events = {}
     _(ContactElement.types).each (type) =>
       events["click .create-#{type.name}"] = (event) =>
         event.preventDefault()
         $.when(@model.getInformations()).then (informations) =>
-          console.log 'informations', informations
+          # console.log 'informations', informations
           newPosition = informations.newPosition()
-          console.log 'newPosition', newPosition
+          # console.log 'newPosition', newPosition
           informations.create({type: type.id, position: newPosition, contact_group: @model.id})
     # console.log 'events', events
     events
@@ -1523,15 +1895,15 @@ class ContactGroupShowView extends GroupShowView
     <div class="btn-group">
       
       {{#types}}
-        <button class="create-{{name}} btn btn-large">
+        <button class="create-{{name}} btn btn-large" rel="tooltip" title="Dodaj {{add}}">
           <i class="icon-{{icon}}"></i>
         </button>
       {{/types}}
 
+      <!--
       <button class="btn btn-large dropdown-toggle" data-toggle="dropdown">
         <div class="caret"></div>
       </button>
-
       <ul class="dropdown-menu">
         {{#types}}
           <li>
@@ -1539,6 +1911,8 @@ class ContactGroupShowView extends GroupShowView
           </li>
         {{/types}}
       </ul>
+      -->
+      
     </div>
     """.render {types: ContactElement.types}
 
@@ -1675,7 +2049,7 @@ class RestaurantUserShowView extends Backbone.View
       <div class="span12 form-horizontal">
         <legend>
           Dedykowany użytkownik
-          <small>mogący aktualizować dane teleadresowe i menu restauracji</small>
+          <small>mogący aktualizować dane teleadresowe i menu</small>
         </legend>
         <div class="control-group">
           <label for="" class="control-label">Identyfikator</label>
@@ -1757,7 +2131,6 @@ class RestaurantUserShowView extends Backbone.View
 
   destroy: (e) =>
     e.preventDefault()
-    # console.log 'destroy'
     @trigger 'destroy', @model
   
   render: =>
@@ -1823,17 +2196,16 @@ class App extends Backbone.Router
     @updateLinks()
   
   notifications: ->
-    @setView new NotificationsView({collection: @Notifications})
+    @setView new NotificationsView({collection: @Notifications.load()})
     @Notifications.fetch()
   
   surveys: ->
     collection = @Surveys
     collection.active = null
-    listView = new CollectionView({collection, itemView: SurveyView})
+    listView = new CollectionView({collection: collection.load(), itemView: SurveyView})
     addView = new AddView({collection, placeholder: 'Tytuł nowej ankiety'})
     view = new MenuLayout({title: 'Ankiety', listView, addView})
     @setView view
-    collection.load()
   
   newSurvey: ->
     model = new Survey()
@@ -1872,7 +2244,7 @@ class App extends Backbone.Router
   informations: (id) =>
     collection = @InformationGroups
     
-    listView = new CollectionView({collection, itemView: InformationGroupView})
+    listView = new MenuCollectionView({collection: collection.load(), itemView: InformationGroupView})
     
     if id? # pokaż dany element
       if id is 'new'
@@ -1906,7 +2278,7 @@ class App extends Backbone.Router
   contact: (id) =>
     collection = @ContactGroups
 
-    listView = new CollectionView({collection, itemView: ContactGroupView})
+    listView = new SortableCollectionView({collection: collection.load(), itemView: ContactGroupView})
 
     if id? # pokaż dany element
       if id is 'new'
@@ -1935,7 +2307,7 @@ class App extends Backbone.Router
   map: (id) =>
     collection = @Places
 
-    listView = new CollectionView({collection, itemView: PlaceView})
+    listView = new CollectionView({collection: collection.load(), itemView: PlaceView})
     
     if id is "new" # utwórz nowy element
       model = new Place()
@@ -1987,7 +2359,7 @@ class App extends Backbone.Router
     
     MenuItemView = RestaurantUserView
     
-    listView = new CollectionView({collection, itemView: MenuItemView})
+    listView = new CollectionView({collection: collection.load(), itemView: MenuItemView})
 
     if id is "new" # utwórz nowy element
       model = new RestaurantUser({username: undefined})
@@ -2054,9 +2426,15 @@ class App extends Backbone.Router
       $el.toggleClass 'active', $el.data('id') is id
 
 ############################### Restaurant Router ###############################
+  
 
-class Restaurant extends StackMob.Model
+class Restaurant extends ModelWithImage
   schemaName: 'restaurant'
+  
+  defaults:
+    image_url: '/img/restaurant.png'
+    image_width: 122
+    image_height: 124
 
 class Restaurants extends StackMob.Collection
   model: Restaurant
@@ -2070,12 +2448,13 @@ class Restaurants extends StackMob.Collection
     , error: (e) =>
       callback(e)
 
-class MenuItem extends StackMob.Model
+class MenuItem extends ModelWithImage
   schemaName: 'menu_item'
   
-  validate: (attrs) ->
-    return "Musisz podać nazwę" unless attrs.name
-    return "Musisz podać cenę" unless attrs.price
+  defaults:
+    image_url: '/img/menu-item.png'
+    image_width: 88
+    image_height: 88
 
 class MenuItems extends StackMob.Collection
   model: MenuItem
@@ -2085,7 +2464,6 @@ class MenuItems extends StackMob.Collection
   
   comparator: (menuItem) ->
     a = (if menuItem.get('is_featured') then -1000 else 0) + menuItem.get('price')
-    # console.log 'a', a
     a
   
   defaults:
@@ -2100,7 +2478,7 @@ class MenuItems extends StackMob.Collection
     , error: (e) =>
       callback(e)
 
-class RestaurantMenuItemView extends Backbone.View
+class RestaurantMenuItemView extends View
   template: -> """
     <section class="menu-item editable {{#if name}} {{else}} active {{/if}}">
       <div class="configurable show">
@@ -2116,64 +2494,98 @@ class RestaurantMenuItemView extends Backbone.View
       <div class="row-fluid edit">
         <form class="span12 item compact-bottom">
           
-            <div class="control-group">
-              <label for="" class="control-label">Nazwa</label>
-              <div class="controls"><input type="text" class="span12 input-name" value="{{ name }}"/></div>
+          <div class="control-group">
+            <label for="" class="control-label"></label>
+            <div class="controls">
+              <img class="image-preview" src="{{ image_url }}"/>
             </div>
-            
-            <div class="control-group">
-              <label for="" class="control-label">Cena</label>
-              <div class="controls"><input type="text" class="span12 input-price" value="{{ price }}" placeholder="9.99"/></div>
+          </div>
+        
+          <div class="control-group">
+            <label for="" class="control-label">Zdjęcie</label>
+            <div class="controls">
+              <input type="file" class="input-image" name="image" />
             </div>
-            
-            <div class="control-group">
-              <label for="" class="control-label">Opis</label>
-              <div class="controls">
-                <textarea rows="3" class="span12 input-description">{{ description }}</textarea>
-              </div>
+          </div>
+        
+          <div class="control-group">
+            <label for="" class="control-label">Nazwa</label>
+            <div class="controls"><input type="text" class="span12 input-name" value="{{ name }}"/></div>
+          </div>
+          
+          <div class="control-group">
+            <label for="" class="control-label">Cena</label>
+            <div class="controls"><input type="text" class="span12 input-price" value="{{ price }}" placeholder="9.99"/></div>
+          </div>
+          
+          <div class="control-group">
+            <label for="" class="control-label">Opis</label>
+            <div class="controls">
+              <textarea rows="3" class="span12 input-description">{{ description }}</textarea>
             </div>
-            
-            <div class="control-group">
-              <label for="" class="control-label"><i class="icon-star"></i> Polecane</label>
-              <div class="controls">
-                  <input type="checkbox" class="span12 input-featured" {{#if is_featured}}checked{{/if}}/>
-              </div>
+          </div>
+          
+          <div class="control-group">
+            <label for="" class="control-label"><i class="icon-star"></i> Polecane</label>
+            <div class="controls">
+                <input type="checkbox" class="span12 input-featured" {{#if is_featured}}checked{{/if}}/>
             </div>
-            <div class="form-actions compact">
-              <button class="btn btn-primary btn-large save pull-right">
-                <i class="icon-ok icon-white"></i>
-                Zapisz
-              </button>
-              <button class="btn btn-large destroy">
-                <i class="icon-remove"></i>
-                Usuń
-              </button>
-            </div>
-            
-
+          </div>
+          
+          <div class="form-actions compact">
+            <button class="btn btn-primary btn-large save pull-right">
+              <i class="icon-ok icon-white"></i>
+              Zapisz
+            </button>
+            <button class="btn btn-large destroy">
+              <i class="icon-remove"></i>
+              Usuń
+            </button>
+          </div>
+          
         </form>
       </div>
     </section>
   """
+  
+  initialize: ->
+    @model.on 'sync', @onSync
   
   events:
     'click .show': 'edit'
     'click .save': 'save'
     'submit form': 'save'
     'click .destroy': 'destroy'
+    'change .input-image': 'onImageChange'
   
+  onSync: (e) =>
+    # console.log 'onSync in menu item view'
+    @$('section').removeClass('waiting')
+    @render()
+    
   edit: (e) =>
     @$('section').addClass 'active'
   
+  show: (e) =>
+    @$('section').removeClass 'active'
+  
   save: (e) =>
+    # console.log 'save'
     e.preventDefault()
+    e.stopPropagation()
     @model.set
       name: @$('.input-name').val()
       description: @$('.input-description').val()
       price: Number(@$('.input-price').val())
       is_featured: !! @$('.input-featured').attr('checked')
       restaurant: @options.restaurant
-    @model.save()
+    @model.save {},
+      success: =>
+        @onSync()
+      error: =>
+        alert('Aktualizacja nie powiodła się, spróbuj ponownie później')
+        @$('section').removeClass 'active'
+    @$('section').addClass('waiting')
   
   destroy: (e) =>
     e.preventDefault()
@@ -2183,7 +2595,7 @@ class RestaurantMenuItemView extends Backbone.View
     @collection.remove @model
   
   initialize: ->
-    @model.on 'change', @render
+    @model.on 'save', @render
   
   render: =>
     # console.log 'is_featured', @model.get('is_featured')
@@ -2193,6 +2605,9 @@ class RestaurantMenuItemView extends Backbone.View
 class RestaurantView extends CollectionView
   
   itemView: RestaurantMenuItemView
+  
+  getImagePreview: ->
+    @$('.restaurant-image-preview')
   
   template: -> """
     {{{ restaurantNavbar }}}
@@ -2208,44 +2623,70 @@ class RestaurantView extends CollectionView
               </h1>
             </div>
           <form id="restaurant-info-form">
-          <section class="row-fluid item">
-            <div class="span12 form-horizontal">
-             
-              <div class="control-group">
-                <label for="" class="control-label">Nazwa</label>
-                <div class="controls"><input type="text" disabled class="span12" value="{{ name }}"/></div>
-              </div>
+          
+            <section class="row-fluid item restaurant-form-section">
+              <div class="span12 form-horizontal">
+                
+                <div class="control-group">
+                  <label for="" class="control-label"></label>
+                  <div class="controls">
+                    <img class="restaurant-image-preview" src="{{ image_url }}"/>
+                  </div>
+                </div>
+                
+                <div class="control-group">
+                  <label for="" class="control-label">Zdjęcie</label>
+                  <div class="controls">
+                    <input type="file" class="restaurant-input-image" name="image" />
+                  </div>
+                </div>
+                
+                <div class="control-group">
+                  <label for="" class="control-label">Nazwa</label>
+                  <div class="controls">
+                    <input type="text" disabled class="span12" value="{{ name }}"/>
+                  </div>
+                </div>
 
-              <div class="control-group">
-                <label for="" class="control-label">Adres</label>
-                <div class="controls"><input type="text" class="span12 input-address" value="{{ address }}"/></div>
-              </div>
+                <div class="control-group">
+                  <label for="" class="control-label">Adres</label>
+                  <div class="controls">
+                    <input type="text" class="span12 input-address" value="{{ address }}"/>
+                  </div>
+                </div>
               
-              <div class="control-group">
-                <label for="" class="control-label">Telefon</label>
-                <div class="controls"><input type="text" class="span12 input-phone" value="{{ phone }}"/></div>
-              </div>
+                <div class="control-group">
+                  <label for="" class="control-label">Telefon</label>
+                  <div class="controls">
+                    <input type="text" class="span12 input-phone" value="{{ phone }}"/>
+                  </div>
+                </div>
               
-              <div class="control-group">
-                <label for="" class="control-label">Strona www</label>
-                <div class="controls"><input type="text" class="span12 input-url" value="{{ url }}"/></div>
+                <div class="control-group">
+                  <label for="" class="control-label">Strona www</label>
+                  <div class="controls">
+                    <input type="text" class="span12 input-url" value="{{ url }}"/>
+                  </div>
+                </div>
+              
               </div>
+            </section>
+            
+            <div class="form-actions section">
+              <button class="btn btn-primary btn-large pull-right save">
+                <i class="icon-ok icon-white"></i>
+                Zapisz
+              </button>
             </div>
-          </section>
-          <div class="form-actions section">
-            <button class="btn btn-primary btn-large pull-right save">
-              <i class="icon-ok icon-white"></i>
-              Zapisz
-            </button>
-          </div>
+            
           </form>
         </div>
         <div class="span6">
-            <div class="category">
-              <h1>
-                Menu
-              </h1>
-            </div>
+          <div class="category">
+            <h1>
+              Menu
+            </h1>
+          </div>
           
           <div id="menu" class="clearfix">
             <section class="item">
@@ -2264,23 +2705,27 @@ class RestaurantView extends CollectionView
     </div>"""
   
   initialize: ->
-    # console.log 'RestaurantView', @model
-    @model.on 'change', @render
     @model.on 'reset', @render
+    @model.on 'sync', @render
+    window.model = @model
     super
     
   events:
     'click .save': 'save'
     'submit #restaurant-info-form': 'save'
     'click .create': 'create'
+    'change .restaurant-input-image': 'onImageChange'
   
   save: (e) =>
+    # console.log 'save'
+    @$('.restaurant-form-section').addClass('waiting')    
     e.preventDefault()
     # console.log 'save'
     @model.set
       address: @$('.input-address').val()
       phone: @$('.input-phone').val()
       url: @$('.input-url').val()
+    # @model.beforeSave()
     @model.save()
   
   create: (e) =>
@@ -2296,6 +2741,8 @@ class RestaurantView extends CollectionView
   
 $ ->
   window.globals = {}
+  
+  $("[rel='tooltip']").tooltip()
   
   displayRestaurantPanelById = (id, user) ->
     new Restaurants().getById id, (error, model) =>
@@ -2313,7 +2760,6 @@ $ ->
             $('body').html view.render().el
   
   bazylia = off
-  
   auth = on
   
   if bazylia

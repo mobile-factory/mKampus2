@@ -177,12 +177,18 @@ body {
 .category > a {
   color: #000;
 }
-section.waiting.editable {
-  background: url("http://jqueryui.com/themeroller/images/?new=eeeeee&w=40&h=40&f=png&q=100&fltr[]=over|textures/08_diagonals_thick.png|0|0|90red");
+.waiting {
+  background: url("/img/waiting.png");
 }
-section.waiting.editable .configurable,
-section.waiting.editable form {
-  background: url("http://jqueryui.com/themeroller/images/?new=eeeeee&w=40&h=40&f=png&q=100&fltr[]=over|textures/08_diagonals_thick.png|0|0|90red");
+.waiting .configurable,
+.waiting form {
+  background: url("/img/waiting.png");
+}
+.loading {
+  text-align: center;
+  padding-top: 40px;
+  padding-bottom: 40px;
+  background: #eee url("/img/waiting.png");
 }
 .info-label {
   color: #666;

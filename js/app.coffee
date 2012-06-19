@@ -1631,8 +1631,10 @@ class InformationElementView extends ElementView
     @on 'error', @onError
   
   onError: =>
-    alert 'Nie udało się wysłać tego obrazka'
-    @destroy()
+    if @model.get('type') is 'image'
+      alert 'Nie udało się wysłać tego obrazka'
+      if not @model.id
+        @remove()
   
   events: ->
     _.extend super,

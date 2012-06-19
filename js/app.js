@@ -2098,8 +2098,12 @@
     };
 
     InformationElementView.prototype.onError = function() {
-      alert('Nie udało się wysłać tego obrazka');
-      return this.destroy();
+      if (this.model.get('type') === 'image') {
+        alert('Nie udało się wysłać tego obrazka');
+        if (!this.model.id) {
+          return this.remove();
+        }
+      }
     };
 
     InformationElementView.prototype.events = function() {

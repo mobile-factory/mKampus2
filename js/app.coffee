@@ -1634,6 +1634,7 @@ class InformationElementView extends ElementView
     if @model.get('type') is 'image'
       alert 'Nie udało się wysłać tego obrazka'
       if not @model.id
+        @model.collection.remove @model
         @remove()
   
   events: ->

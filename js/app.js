@@ -2101,6 +2101,7 @@
       if (this.model.get('type') === 'image') {
         alert('Nie udało się wysłać tego obrazka');
         if (!this.model.id) {
+          this.model.collection.remove(this.model);
           return this.remove();
         }
       }

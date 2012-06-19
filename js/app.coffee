@@ -1523,10 +1523,13 @@ class ElementView extends View
     # @model.on 'change', @render, @
     @model.on 'sync', @onSync, @
     @model.on 'change', @render, @
+    @model.on 'error', @onError, @
   
   open: ->
     @model.isOpen = true
     @render()
+  
+  onError: (error) ->
   
   persist: ->
     type = @model.get('type')
@@ -1622,6 +1625,15 @@ class InformationElementView extends ElementView
         </form>
       </div>
     </section>"""
+  
+  initialize: ->
+    super
+    @on 'error', @onError
+  
+  onError: =>
+    if @get('type') is 'image'
+      alert 'Nie udało się wysłać tego obrazka'
+    @destroy()
   
   events: ->
     _.extend super,
@@ -2293,7 +2305,8 @@ class App extends Backbone.Router
       view = new MenuLayout({title: 'Informacje', listView, addView})
       # console.log 'info'
       @setView view
-      collection.load()
+      $.when(collection.load()).then =>
+        @updateLinks()
   
   contact: (id) =>
     collection = @ContactGroups
@@ -2322,7 +2335,7 @@ class App extends Backbone.Router
         @navigate('contact/new', true)
       view = new MenuLayout({title: 'Kontakt', listView, addView})
       @setView view
-      collection.load()
+      $.when(collection.load()).then @updateLinks
     
   map: (id) =>
     collection = @Places

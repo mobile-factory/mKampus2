@@ -1971,13 +1971,16 @@
 
     ElementView.prototype.initialize = function() {
       this.model.on('sync', this.onSync, this);
-      return this.model.on('change', this.render, this);
+      this.model.on('change', this.render, this);
+      return this.model.on('error', this.onError, this);
     };
 
     ElementView.prototype.open = function() {
       this.model.isOpen = true;
       return this.render();
     };
+
+    ElementView.prototype.onError = function(error) {};
 
     ElementView.prototype.persist = function() {
       var type;
@@ -2054,6 +2057,7 @@
     InformationElementView.name = 'InformationElementView';
 
     function InformationElementView() {
+      this.onError = __bind(this.onError, this);
       return InformationElementView.__super__.constructor.apply(this, arguments);
     }
 
@@ -2086,6 +2090,18 @@
     InformationElementView.prototype.template = function() {
       var template;
       return "<section class=\"editable sortable {{#if isOpen}} active {{/if}} {{#if hasChanged}} waiting {{/if}}\" data-sortable-id=\"{{" + this.modelId + "}}\">\n  <div class=\"configurable show\">\n    " + ((template = this.templateShow[this.model.get('type')]) ? template() : void 0) + "\n  </div>\n  <div class=\"add-section edit\">\n    <form class=\"edit-form\" action=\"\">\n      " + ((template = this.templateEdit[this.model.get('type')]) ? template() : void 0) + "\n      <div class=\"form-actions\">\n        <div class=\"btn-toolbar pull-right\">\n\n          <!--<div class=\"btn-group\">\n            \n            <button class=\"up-button btn btn-large\">\n              <i class=\"icon-arrow-up\"></i>\n            </button>\n            <button class=\"down-button btn btn-large\">\n              <i class=\"icon-arrow-down\"></i>\n            </button>\n            \n          </div>-->\n\n          <div class=\"btn-group\">\n            <button type=\"submit\" class=\"save-button btn btn-primary btn-large\">\n              <i class=\"icon-pencil icon-white\"></i>\n              Zapisz element\n            </button>\n          </div>\n        </div>\n\n        <button class=\"destroy-button btn btn-large\">\n          <i class=\"icon-remove\"></i>\n          Usuń element\n        </button>\n\n      </div>\n    </form>\n  </div>\n</section>";
+    };
+
+    InformationElementView.prototype.initialize = function() {
+      InformationElementView.__super__.initialize.apply(this, arguments);
+      return this.on('error', this.onError);
+    };
+
+    InformationElementView.prototype.onError = function() {
+      if (this.get('type') === 'image') {
+        alert('Nie udało się wysłać tego obrazka');
+      }
+      return this.destroy();
     };
 
     InformationElementView.prototype.events = function() {
@@ -3083,7 +3099,9 @@
           addView: addView
         });
         this.setView(view);
-        return collection.load();
+        return $.when(collection.load()).then(function() {
+          return _this.updateLinks();
+        });
       }
     };
 
@@ -3141,7 +3159,7 @@
           addView: addView
         });
         this.setView(view);
-        return collection.load();
+        return $.when(collection.load()).then(this.updateLinks);
       }
     };
 

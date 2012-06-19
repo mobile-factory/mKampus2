@@ -1207,6 +1207,7 @@
           var data;
 
           if(jqXHR && (jqXHR.responseText || jqXHR.text)) {
+            console.log('jqXHR', jqXHR);
             var result = JSON.parse(jqXHR.responseText || jqXHR.text);
             data = result;
           }

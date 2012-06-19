@@ -274,6 +274,49 @@
 
   })(StackMob.Collection);
 
+  SortableCollection = (function(_super) {
+
+    __extends(SortableCollection, _super);
+
+    SortableCollection.name = 'SortableCollection';
+
+    function SortableCollection() {
+      return SortableCollection.__super__.constructor.apply(this, arguments);
+    }
+
+    SortableCollection.prototype.comparator = function(model) {
+      return model.get('position');
+    };
+
+    SortableCollection.prototype.parse = function(response) {
+      return _(response).reject(function(model) {
+        return model.is_deleted;
+      });
+    };
+
+    SortableCollection.prototype.newPosition = function() {
+      var last, sorted;
+      if (this.length > 0) {
+        sorted = _(this.pluck('position').sort(function(a, b) {
+          return a - b;
+        }));
+        last = sorted.last() > this.length ? sorted.last() : this.length;
+        return last + 1;
+      } else {
+        return 1;
+      }
+    };
+
+    SortableCollection.prototype.createNew = function() {
+      return new this.model({
+        position: this.newPosition()
+      });
+    };
+
+    return SortableCollection;
+
+  })(LoadableCollection);
+
   View = (function(_super) {
 
     __extends(View, _super);
@@ -1766,31 +1809,9 @@
 
     InformationElements.prototype.model = InformationElement;
 
-    InformationElements.prototype.comparator = function(model) {
-      return model.get('position');
-    };
-
-    InformationElements.prototype.newPosition = function() {
-      var sorted;
-      if (this.length > 0) {
-        sorted = _(this.pluck('position').sort(function(a, b) {
-          return a - b;
-        }));
-        return sorted.last() + 1;
-      } else {
-        return 0;
-      }
-    };
-
-    InformationElements.prototype.parse = function(response) {
-      return _(response).reject(function(model) {
-        return model.is_deleted;
-      });
-    };
-
     return InformationElements;
 
-  })(StackMob.Collection);
+  })(SortableCollection);
 
   InformationGroup = (function(_super) {
 
@@ -1840,30 +1861,6 @@
     return InformationGroup;
 
   })(StackMob.Model);
-
-  SortableCollection = (function(_super) {
-
-    __extends(SortableCollection, _super);
-
-    SortableCollection.name = 'SortableCollection';
-
-    function SortableCollection() {
-      return SortableCollection.__super__.constructor.apply(this, arguments);
-    }
-
-    SortableCollection.prototype.comparator = function(model) {
-      return model.get('position');
-    };
-
-    SortableCollection.prototype.parse = function(response) {
-      return _(response).reject(function(model) {
-        return model.is_deleted;
-      });
-    };
-
-    return SortableCollection;
-
-  })(LoadableCollection);
 
   InformationGroups = (function(_super) {
 
@@ -3035,7 +3032,7 @@
         if (id === 'new') {
           return $.when(collection.load()).then(function(collection) {
             var model;
-            window.model = model = new InformationGroup();
+            window.model = model = collection.createNew();
             collection.add(model);
             return model.save({}, {
               success: function() {

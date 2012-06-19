@@ -235,6 +235,24 @@ class LoadableCollection extends StackMob.Collection
         @fetchPromise.resolve(@)
     @fetchPromise
 
+class SortableCollection extends LoadableCollection
+  comparator: (model) ->
+    model.get('position')
+
+  parse: (response) ->
+    _(response).reject (model) -> model.is_deleted
+
+  newPosition: ->
+    if @length > 0
+      sorted = _(@pluck('position').sort((a, b) -> a - b))
+      last = if sorted.last() > @length then sorted.last() else @length
+      last + 1
+    else
+      1
+
+  createNew: ->
+    new @model({position: @newPosition()})
+
 class View extends Backbone.View
   
   getImagePreview: -> @$('.image-preview')
@@ -1429,22 +1447,8 @@ class InformationElement extends ModelWithImage
     else
       super
 
-class InformationElements extends StackMob.Collection
+class InformationElements extends SortableCollection
   model: InformationElement
-  
-  comparator: (model) ->
-    model.get 'position'
-  
-  newPosition: ->
-    if @length > 0
-      sorted = _(@pluck('position').sort((a, b) -> a - b))
-      # console.log 'sorted', sorted
-      sorted.last() + 1
-    else
-      0
-  
-  parse: (response) ->
-    _(response).reject (model) -> model.is_deleted
 
 class InformationGroup extends StackMob.Model
   schemaName: 'information_group'
@@ -1472,13 +1476,6 @@ class InformationGroup extends StackMob.Model
       else
         @fetchElementsPromise.resolve(@informations)
     @fetchElementsPromise
-
-class SortableCollection extends LoadableCollection
-  comparator: (model) ->
-    model.get('position')
-  
-  parse: (response) ->
-    _(response).reject (model) -> model.is_deleted
 
 class InformationGroups extends SortableCollection
   model: InformationGroup
@@ -2266,7 +2263,7 @@ class App extends Backbone.Router
     if id? # pokaż dany element
       if id is 'new'
         $.when(collection.load()).then (collection) =>
-          window.model = model = new InformationGroup()
+          window.model = model = collection.createNew()
           collection.add model
           model.save {}, success: =>
             # mainView = new InformationGroupShowView({model})

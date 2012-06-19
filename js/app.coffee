@@ -174,8 +174,8 @@ class LoginView extends Backbone.View
 
   template: """<div class="container" id="login">
     
-      <form action="POST" class="form-horizontal">
-      <div class="modal" style="position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;">
+      <form action="POST" class="form-horizontal login-form">
+      <div class="modal login-modal" style="position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;">
         <div class="modal-header">
           <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>
         </div>
@@ -469,16 +469,22 @@ class Image extends StackMob.Model
 class ModelWithImage extends StackMob.Model
 
   initialize: ->
-    @on 'sync', @updateImageModel
+    @on 'sync', @updateImageModel, @
+
+  getImageId: ->
+    "#{@constructor.name}_#{@id}"
 
   updateImageModel: =>
     image = new Image
       image_id: @get('image')
-      width: @get('width')
-      height: @get('height')
+      width: @get('image_width')
+      height: @get('image_height')
       url: @get('image_url')
     image.save {}, error: ->
       image.create()
+    @fallbackToDefaultImage()
+    if @hasChanged()
+      @save()
   
   defaultImage: -> 
   
@@ -516,7 +522,7 @@ class ModelWithImage extends StackMob.Model
 
   fallbackToDefaultImage: =>
     if @id and not @has('image')
-      @set image: "#{@constructor.name}_#{@id}"
+      @set image: @getImageId()
 
 ################### NOTIFICATIONS ###################
 

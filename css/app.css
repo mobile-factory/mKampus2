@@ -202,6 +202,20 @@ footer {
     min-height: 150px;
   }
 }
+@media (min-with: 481px) and (max-width: 767px) {
+  .login-form {
+    margin-top: 0px;
+    margin-left: 10px;
+    margin-right: -10px;
+  }
+}
+@media (max-width: 480px) {
+  .login-form {
+    margin-top: 0px;
+    margin-left: 10px;
+    margin-right: -10px;
+  }
+}
 .form-actions .btn-toolbar {
   margin-top: 0;
   margin-bottom: 0;

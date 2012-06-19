@@ -211,7 +211,7 @@
       return LoginView.__super__.constructor.apply(this, arguments);
     }
 
-    LoginView.prototype.template = "<div class=\"container\" id=\"login\">\n\n  <form action=\"POST\" class=\"form-horizontal\">\n  <div class=\"modal\" style=\"position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;\">\n    <div class=\"modal-header\">\n      <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>\n    </div>\n    <div class=\"modal-body\">\n        <fieldset>\n\n          <div class=\"control-group\">\n            <label for=\"login-input\" class=\"control-label\">Login</label>\n            <div class=\"controls\"><input type=\"text\" id=\"login-input\" class=\"input-xlarge\" autofocus /></div>\n          </div>\n          <div class=\"control-group\">\n            <label for=\"password-input\" class=\"control-label\">Hasło</label>\n            <div class=\"controls\"><input type=\"password\" id=\"password-input\" class=\"input-xlarge\" /></div>\n          </div>\n        </fieldset>\n\n    </div>\n    <div class=\"modal-footer\">\n      <input id=\"login-button\" type=\"submit\" class=\"btn btn-big btn-primary\" value=\"Zaloguj\" />\n    </div>\n  </div>\n  </form>\n  {{{ footer }}}\n</div>";
+    LoginView.prototype.template = "<div class=\"container\" id=\"login\">\n\n  <form action=\"POST\" class=\"form-horizontal login-form\">\n  <div class=\"modal login-modal\" style=\"position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;\">\n    <div class=\"modal-header\">\n      <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>\n    </div>\n    <div class=\"modal-body\">\n        <fieldset>\n\n          <div class=\"control-group\">\n            <label for=\"login-input\" class=\"control-label\">Login</label>\n            <div class=\"controls\"><input type=\"text\" id=\"login-input\" class=\"input-xlarge\" autofocus /></div>\n          </div>\n          <div class=\"control-group\">\n            <label for=\"password-input\" class=\"control-label\">Hasło</label>\n            <div class=\"controls\"><input type=\"password\" id=\"password-input\" class=\"input-xlarge\" /></div>\n          </div>\n        </fieldset>\n\n    </div>\n    <div class=\"modal-footer\">\n      <input id=\"login-button\" type=\"submit\" class=\"btn btn-big btn-primary\" value=\"Zaloguj\" />\n    </div>\n  </div>\n  </form>\n  {{{ footer }}}\n</div>";
 
     LoginView.prototype.events = {
       submit: 'submit'
@@ -584,22 +584,30 @@
     }
 
     ModelWithImage.prototype.initialize = function() {
-      return this.on('sync', this.updateImageModel);
+      return this.on('sync', this.updateImageModel, this);
+    };
+
+    ModelWithImage.prototype.getImageId = function() {
+      return "" + this.constructor.name + "_" + this.id;
     };
 
     ModelWithImage.prototype.updateImageModel = function() {
       var image;
       image = new Image({
         image_id: this.get('image'),
-        width: this.get('width'),
-        height: this.get('height'),
+        width: this.get('image_width'),
+        height: this.get('image_height'),
         url: this.get('image_url')
       });
-      return image.save({}, {
+      image.save({}, {
         error: function() {
           return image.create();
         }
       });
+      this.fallbackToDefaultImage();
+      if (this.hasChanged()) {
+        return this.save();
+      }
     };
 
     ModelWithImage.prototype.defaultImage = function() {};
@@ -650,7 +658,7 @@
     ModelWithImage.prototype.fallbackToDefaultImage = function() {
       if (this.id && !this.has('image')) {
         return this.set({
-          image: "" + this.constructor.name + "_" + this.id
+          image: this.getImageId()
         });
       }
     };

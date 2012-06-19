@@ -651,8 +651,8 @@
           return image.create();
         }
       });
-      this.fallbackToDefaultImage();
-      if (this.hasChanged()) {
+      if (this.id && !this.get('image')) {
+        this.fallbackToDefaultImage();
         return this.save();
       }
     };

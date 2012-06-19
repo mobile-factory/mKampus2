@@ -502,8 +502,8 @@ class ModelWithImage extends StackMob.Model
       url: @get('image_url')
     image.save {}, error: ->
       image.create()
-    @fallbackToDefaultImage()
-    if @hasChanged()
+    if @id and not @get('image')
+      @fallbackToDefaultImage()
       @save()
   
   defaultImage: -> 

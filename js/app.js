@@ -2098,9 +2098,7 @@
     };
 
     InformationElementView.prototype.onError = function() {
-      if (this.get('type') === 'image') {
-        alert('Nie udało się wysłać tego obrazka');
-      }
+      alert('Nie udało się wysłać tego obrazka');
       return this.destroy();
     };
 

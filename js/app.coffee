@@ -1631,8 +1631,7 @@ class InformationElementView extends ElementView
     @on 'error', @onError
   
   onError: =>
-    if @get('type') is 'image'
-      alert 'Nie udało się wysłać tego obrazka'
+    alert 'Nie udało się wysłać tego obrazka'
     @destroy()
   
   events: ->

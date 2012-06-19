@@ -168,6 +168,7 @@ footer {
 .pre {
   border: 0;
   background: transparent;
+  font-family: inherit;
 }
 @media (min-width: 768px) {
   .item-view .category {

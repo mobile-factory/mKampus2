@@ -1542,7 +1542,7 @@ class ElementView extends View
   save: (event) ->
     event.preventDefault()
     @persist()
-    @$('.save-button').disable()
+    @$('.save-button').attr('disabled', 'disabled')
     # console.log 'after save'
     
   

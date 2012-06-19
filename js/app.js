@@ -2002,7 +2002,7 @@
     ElementView.prototype.save = function(event) {
       event.preventDefault();
       this.persist();
-      return this.$('.save-button').disable();
+      return this.$('.save-button').attr('disabled', 'disabled');
     };
 
     ElementView.prototype.destroy = function(event) {

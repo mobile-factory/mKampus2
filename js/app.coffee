@@ -1637,11 +1637,12 @@ class SortableCollectionView extends CollectionView
     # console.log 'sort stop', event
     $.when(@collection).then (collection) =>      
       @$('.sortable').each (index, element) =>
+        # console.log '.sortable', element
         id = $(element).data('sortable-id')
-        model = collection.get(id)
-        unless model.get('position') is index
-          model.set({position: index})
-          model.save()
+        if model = collection.get(id)
+          unless model.get('position') is index
+            model.set({position: index})
+            model.save()
       @afterSort collection
   
   render: ->

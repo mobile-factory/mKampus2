@@ -2113,12 +2113,13 @@
         _this.$('.sortable').each(function(index, element) {
           var id, model;
           id = $(element).data('sortable-id');
-          model = collection.get(id);
-          if (model.get('position') !== index) {
-            model.set({
-              position: index
-            });
-            return model.save();
+          if (model = collection.get(id)) {
+            if (model.get('position') !== index) {
+              model.set({
+                position: index
+              });
+              return model.save();
+            }
           }
         });
         return _this.afterSort(collection);

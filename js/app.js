@@ -1994,15 +1994,20 @@
     };
 
     ElementView.prototype.destroy = function(event) {
+      var _ref;
       event.preventDefault();
-      return this.model.save({
+      this.model.save({
         is_deleted: true
       });
+      return (_ref = this.model.collection) != null ? _ref.sort() : void 0;
     };
 
     ElementView.prototype.onSync = function() {
+      var _ref;
       if (this.model.get('is_deleted') === true) {
-        this.model.collection.remove(this.model);
+        if ((_ref = this.model.collection) != null) {
+          _ref.remove(this.model);
+        }
         return this.remove();
       } else {
         return this.render();
@@ -2202,7 +2207,9 @@
       this.model.save({
         is_deleted: true
       });
-      this.model.collection.remove(this.model);
+      console.log('before sort', this.model.collection.pluck('position'));
+      this.model.collection.sort();
+      console.log('after sort', this.model.collection.pluck('position'));
       return app.navigate(this.navigateToAfterDelete, true);
     };
 

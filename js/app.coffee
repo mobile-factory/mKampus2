@@ -1540,10 +1540,11 @@ class ElementView extends View
   destroy: (event) ->
     event.preventDefault()
     @model.save is_deleted: true
+    @model.collection?.sort()
   
   onSync: ->
     if @model.get('is_deleted') is true
-      @model.collection.remove @model
+      @model.collection?.remove @model
       @remove()
     else
       @render()
@@ -1682,7 +1683,10 @@ class GroupShowView extends SortableCollectionView
 
   destroy: ->
     @model.save({is_deleted: true})
-    @model.collection.remove @model
+    # @model.collection.remove @model
+    console.log 'before sort', @model.collection.pluck('position')
+    @model.collection.sort()
+    console.log 'after sort', @model.collection.pluck('position')
     app.navigate @navigateToAfterDelete, true
   
   template: -> """

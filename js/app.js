@@ -2006,12 +2006,15 @@
     };
 
     ElementView.prototype.destroy = function(event) {
-      var _ref;
+      var _ref, _ref1;
       event.preventDefault();
+      if ((_ref = this.model.collection) != null) {
+        _ref.remove(this.model);
+      }
       this.model.save({
         is_deleted: true
       });
-      return (_ref = this.model.collection) != null ? _ref.sort() : void 0;
+      return (_ref1 = this.model.collection) != null ? _ref1.sort() : void 0;
     };
 
     ElementView.prototype.onSync = function() {
@@ -2216,12 +2219,14 @@
     };
 
     GroupShowView.prototype.destroy = function() {
+      var _ref;
       this.model.save({
         is_deleted: true
       });
-      console.log('before sort', this.model.collection.pluck('position'));
       this.model.collection.sort();
-      console.log('after sort', this.model.collection.pluck('position'));
+      if ((_ref = this.model.collection) != null) {
+        _ref.remove(this.model);
+      }
       return app.navigate(this.navigateToAfterDelete, true);
     };
 

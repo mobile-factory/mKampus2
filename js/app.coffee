@@ -1544,9 +1544,10 @@ class ElementView extends View
   
   destroy: (event) ->
     event.preventDefault()
+    @model.collection?.sort()
     @model.collection?.remove @model
     @model.save is_deleted: true
-    @model.collection?.sort()
+    
   
   onSync: ->
     if @model.get('is_deleted') is true

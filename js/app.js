@@ -2006,12 +2006,14 @@
       var _ref, _ref1;
       event.preventDefault();
       if ((_ref = this.model.collection) != null) {
-        _ref.remove(this.model);
+        _ref.sort();
       }
-      this.model.save({
+      if ((_ref1 = this.model.collection) != null) {
+        _ref1.remove(this.model);
+      }
+      return this.model.save({
         is_deleted: true
       });
-      return (_ref1 = this.model.collection) != null ? _ref1.sort() : void 0;
     };
 
     ElementView.prototype.onSync = function() {

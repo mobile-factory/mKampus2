@@ -1207,9 +1207,15 @@
           var data;
 
           if(jqXHR && (jqXHR.responseText || jqXHR.text)) {
-            console.log('jqXHR', jqXHR);
-            var result = JSON.parse(jqXHR.responseText || jqXHR.text);
-            data = result;
+            // console.log('jqXHR', jqXHR);
+            try {
+              var responseData = jqXHR.responseText || jqXHR.text
+              var result = JSON.parse(responseData);
+              data = result;
+            } catch (error) {
+              data = responseData;
+            }
+            
           }
 
           (function(m, d) {

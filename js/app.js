@@ -2759,6 +2759,11 @@
 
     RestaurantUserView.prototype.labelAttribute = 'username';
 
+    RestaurantUserView.prototype.initialize = function() {
+      RestaurantUserView.__super__.initialize.apply(this, arguments);
+      return this.model.on('sync', this.render, this);
+    };
+
     return RestaurantUserView;
 
   })(SelectableView);
@@ -3398,12 +3403,6 @@
     }
 
     MenuItem.prototype.schemaName = 'menu_item';
-
-    MenuItem.prototype.defaults = {
-      image_url: '/img/menu-item.png',
-      image_width: 88,
-      image_height: 88
-    };
 
     return MenuItem;
 

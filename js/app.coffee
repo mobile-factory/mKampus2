@@ -2047,6 +2047,10 @@ class RestaurantUsers extends LoadableCollection
 
 class RestaurantUserView extends SelectableView
   labelAttribute: 'username'
+  
+  initialize: ->
+    super
+    @model.on 'sync', @render, @
 
 class RestaurantUserShowView extends Backbone.View
   labelAttribute: 'username'
@@ -2465,10 +2469,10 @@ class Restaurants extends StackMob.Collection
 class MenuItem extends ModelWithImage
   schemaName: 'menu_item'
   
-  defaults:
-    image_url: '/img/menu-item.png'
-    image_width: 88
-    image_height: 88
+  # defaults:
+  #   image_url: '/img/menu-item.png'
+  #   image_width: 88
+  #   image_height: 88
 
 class MenuItems extends StackMob.Collection
   model: MenuItem

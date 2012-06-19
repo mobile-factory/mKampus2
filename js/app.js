@@ -2002,7 +2002,7 @@
     ElementView.prototype.save = function(event) {
       event.preventDefault();
       this.persist();
-      return this.close();
+      return this.$('.save-button').disable();
     };
 
     ElementView.prototype.destroy = function(event) {
@@ -2021,6 +2021,7 @@
 
     ElementView.prototype.onSync = function() {
       var _ref;
+      this.close();
       if (this.model.get('is_deleted') === true) {
         if ((_ref = this.model.collection) != null) {
           _ref.remove(this.model);

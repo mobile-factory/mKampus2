@@ -1542,8 +1542,9 @@ class ElementView extends View
   save: (event) ->
     event.preventDefault()
     @persist()
+    @$('.save-button').disable()
     # console.log 'after save'
-    @close()
+    
   
   destroy: (event) ->
     event.preventDefault()
@@ -1553,6 +1554,7 @@ class ElementView extends View
     
   
   onSync: ->
+    @close()
     if @model.get('is_deleted') is true
       @model.collection?.remove @model
       @remove()

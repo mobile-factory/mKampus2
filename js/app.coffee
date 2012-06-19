@@ -1574,7 +1574,7 @@ class InformationElementView extends ElementView
   modelId: 'information_element_id'
   
   templateShow:
-    text: -> """<p>{{ text }}</p>"""
+    text: -> """<pre class="pre">{{ text }}</pre>"""
     title: -> """<h3>{{ title }}</h3>"""
     image: -> """<img src="{{ image_url }}" />"""
   

@@ -2065,7 +2065,7 @@
 
     InformationElementView.prototype.templateShow = {
       text: function() {
-        return "<p>{{ text }}</p>";
+        return "<pre class=\"pre\">{{ text }}</pre>";
       },
       title: function() {
         return "<h3>{{ title }}</h3>";

@@ -251,15 +251,17 @@ class View extends Backbone.View
       # console.log 'image', e.target.result
       
       $image.attr('src', e.target.result)
-      width = $image[0].clientWidth
-      height = $image[0].clientHeight
-      @model.set {width, height}
-      base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length)
-      fileName = file.name
-      fileType = file.type
-      @model.setBinaryFile('image_url', fileName, fileType, base64Content)
-      # console.log 'set binary', @model.get('image_url')
-      @model.setBinaryFile('image_content', fileName, fileType, base64Content)
+      setTimeout =>
+        width = $image[0].clientWidth
+        height = $image[0].clientHeight
+        console.log 'WH after', width, height
+        @model.set {image_width: width, image_height: height}
+        base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length)
+        fileName = file.name
+        fileType = file.type
+        @model.setBinaryFile('image_url', fileName, fileType, base64Content)
+        @model.setBinaryFile('image_content', fileName, fileType, base64Content)
+      , 1000
     fileContent = reader.readAsDataURL(file)
   
 class CollectionView extends View

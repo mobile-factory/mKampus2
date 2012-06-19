@@ -296,20 +296,24 @@
       file = e.target.files[0];
       reader = new FileReader();
       reader.onload = function(e) {
-        var $image, base64Content, fileName, fileType, height, width;
+        var $image;
         $image = _this.getImagePreview();
         $image.attr('src', e.target.result);
-        width = $image[0].clientWidth;
-        height = $image[0].clientHeight;
-        _this.model.set({
-          width: width,
-          height: height
-        });
-        base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
-        fileName = file.name;
-        fileType = file.type;
-        _this.model.setBinaryFile('image_url', fileName, fileType, base64Content);
-        return _this.model.setBinaryFile('image_content', fileName, fileType, base64Content);
+        return setTimeout(function() {
+          var base64Content, fileName, fileType, height, width;
+          width = $image[0].clientWidth;
+          height = $image[0].clientHeight;
+          console.log('WH after', width, height);
+          _this.model.set({
+            image_width: width,
+            image_height: height
+          });
+          base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
+          fileName = file.name;
+          fileType = file.type;
+          _this.model.setBinaryFile('image_url', fileName, fileType, base64Content);
+          return _this.model.setBinaryFile('image_content', fileName, fileType, base64Content);
+        }, 1000);
       };
       return fileContent = reader.readAsDataURL(file);
     };

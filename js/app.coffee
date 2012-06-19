@@ -1587,7 +1587,7 @@ class InformationElementView extends ElementView
           <div class="form-actions">
             <div class="btn-toolbar pull-right">
 
-              <div class="btn-group">
+              <!--<div class="btn-group">
                 
                 <button class="up-button btn btn-large">
                   <i class="icon-arrow-up"></i>
@@ -1596,7 +1596,7 @@ class InformationElementView extends ElementView
                   <i class="icon-arrow-down"></i>
                 </button>
                 
-              </div>
+              </div>-->
 
               <div class="btn-group">
                 <button type="submit" class="save-button btn btn-primary btn-large">

@@ -2124,7 +2124,9 @@
       };
     };
 
-    SortableCollectionView.prototype.afterSort = function(collection) {};
+    SortableCollectionView.prototype.afterSort = function(collection) {
+      return collection.sort();
+    };
 
     SortableCollectionView.prototype.sort = function(event) {
       var _this = this;

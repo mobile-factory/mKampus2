@@ -1640,6 +1640,7 @@ class SortableCollectionView extends CollectionView
     {'sortstop': 'sort'}
   
   afterSort: (collection) ->
+    collection.sort()
     
   sort: (event) =>
     # console.log 'sort stop', event

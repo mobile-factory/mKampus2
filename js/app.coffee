@@ -163,71 +163,114 @@ helper timeSwitch: (time) ->
   </span>
   """.render {time}
 
-################### LOGIN ########################
-
-class User extends StackMob.User
-
-class Users extends StackMob.Collection
-  model: User
-
-class LoginView extends Backbone.View
-
-  template: """<div class="container" id="login">
-    
-      <form action="POST" class="form-horizontal login-form">
-      <div class="modal login-modal" style="position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;">
-        <div class="modal-header">
-          <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>
-        </div>
-        <div class="modal-body">
-            <fieldset>
-
-              <div class="control-group">
-                <label for="login-input" class="control-label">Login</label>
-                <div class="controls"><input type="text" id="login-input" class="input-xlarge" autofocus /></div>
-              </div>
-              <div class="control-group">
-                <label for="password-input" class="control-label">Hasło</label>
-                <div class="controls"><input type="password" id="password-input" class="input-xlarge" /></div>
-              </div>
-            </fieldset>
-
-        </div>
-        <div class="modal-footer">
-          <input id="login-button" type="submit" class="btn btn-big btn-primary" value="Zaloguj" />
-        </div>
-      </div>
-      </form>
-      {{{ footer }}}
-    </div>"""
-
-  events:
-    submit: 'submit'
-
-  submit: (e) =>
-    # console.log "submited"
-    e.preventDefault()
-    $('#login-button').button('toggle')
-    user = new User({username: @$('#login-input').val(), password: @$('#password-input').val()})
-    # console.log "LOGIN user", user
-    user.login false,
-      success: (u) =>
-        # $('#login-button').button('toggle')
-        # console.log 'logged in user', user
-        # console.log 'StackMob.getLoggedInUser()', StackMob.getLoggedInUser()
-        @trigger 'login', user
-      error: (u, e) =>
-        @$('.control-group').addClass('error')
-        $('#login-button').button('toggle')
-
-  render: ->
-    @$el.html @template.render()
-    @$('#login-input').focus()
-    @
-
 ################### BACKBONE EXTENSIONS ###################
 
-class LoadableCollection extends StackMob.Collection
+class Model extends StackMob.Model
+  
+  initialize: ->
+    @meta =
+      waiting: false
+    @on 'sync', => @meta.waiting = false
+    super
+  
+  isWaiting: ->
+    @meta.waiting
+  
+  save: ->
+    super
+    @meta.waiting = true
+
+class Image extends Model
+  schemaName: 'image'
+
+class ModelWithImage extends Model
+
+  initialize: ->
+    super
+    @on 'sync', @updateImageModel, @
+    
+  getImageId: ->
+    "#{@constructor.name}_#{@id}"
+
+  updateImageModel: =>
+    image = new Image
+      image_id: @get('image')
+      width: @get('image_width')
+      height: @get('image_height')
+      url: @get('image_url')
+    image.save {}, error: ->
+      image.create()
+    if @id and not @get('image')
+      @fallbackToDefaultImage()
+      @save()
+  
+  defaultImage: -> 
+  
+  getImageURL: ->
+    if img = @get('image_url')
+      # console.log 'ModelWithImage.getImageURL()', img
+      imageData = img.split("\n")
+      if imageData.length is 5
+        type = imageData[0].split(" ")[1]
+        # console.log 'image type', type
+        content = imageData[4]
+        "data:#{type};base64,#{content}"
+      else
+        img
+    else
+      @defaultImage()
+  
+  templateData: ->
+    _.extend @toJSON(),
+      { image_url: @getImageURL() }
+
+  save: ->
+    @beforeSave()
+    super
+
+  beforeSave: =>
+    unless @has('image_url')
+      @set({image_url: ""})
+    @preventImageDestruction()
+    @fallbackToDefaultImage()
+
+  preventImageDestruction: =>
+    content = @get('image_content')
+    url = @get('image_url')
+    if content and content isnt url
+      @set image_url: content
+
+  fallbackToDefaultImage: =>
+    if @id and not @has('image')
+      @set image: @getImageId()
+
+class Collection extends StackMob.Collection
+
+class Group extends Model
+  # saveInformations: =>
+  #   @informations.each (model) =>
+  #     model.save {survey: @id}
+
+  getElements: ->
+    unless @fetchElementsPromise?
+      @fetchElementsPromise = $.Deferred()
+      @informations = new @collectionClass()
+      if @id?
+        fetchMyElements = new StackMob.Collection.Query()
+        # console.log '@id', @id
+        fetchMyElements.equals(@schemaName, @id)
+        @informations.query(fetchMyElements)
+        # console.log 'waiting for reset', @informations
+        @informations.on 'all', (event) =>
+          # console.log 'informations event', event
+        @informations.on 'reset', =>
+          # console.log 'reset', @informations
+          @fetchElementsPromise.resolve(@informations)
+      else
+        @fetchElementsPromise.resolve(@informations)
+    @fetchElementsPromise
+
+class LoadableCollection extends Collection
   load: ->
     unless @fetchPromise?
       @fetchPromise = $.Deferred()
@@ -446,7 +489,7 @@ class SelectableView extends View
   
   template: -> """
     <!-- <div class="selectable sortable span4" data-id="{{ id }}" data-sortable-id= "{{ id }}"> -->
-    <!-- <div class="{{#if hasChanged}} waiting {{/if}}"> -->
+    <!-- <div class="{{#if isWaiting}} waiting {{/if}}"> -->
       <p class="date">{{{ timeSwitch createddate }}}</p>
       <p class="content">
         {{#if #{@labelAttribute} }} {{ #{@labelAttribute} }} {{else}} #{@placeholderLabel} {{/if}}
@@ -470,85 +513,82 @@ class SelectableView extends View
     @trigger 'select', @model
 
   render: =>
-    @$el.html @template().render _.extend(@model.toJSON(), {id: @model.id, hasChanged: @model.hasChanged()})
-    
+    @$el.html @template().render _.extend(@model.toJSON(), {id: @model.id, isWaiting: @model.isWaiting()})    
     # if @model.hasChanged()
     #   # console.log 'waiting', @model.get 'name'
     #   @$el.addClass('waiting')
     # else
     #   # console.log 'not waiting', @model.get 'name'
     #   @$el.removeClass('waiting')
-    @$el.toggleClass('waiting', @model.hasChanged())
+    @$el.toggleClass('waiting', @model.isWaiting())
     window.app.updateLinks()
     @    
 
 
-class Image extends StackMob.Model
-  schemaName: 'image'
+################### LOGIN ########################
 
-class ModelWithImage extends StackMob.Model
+class User extends StackMob.User
 
-  initialize: ->
-    @on 'sync', @updateImageModel, @
+class Users extends Collection
+  model: User
 
-  getImageId: ->
-    "#{@constructor.name}_#{@id}"
+class LoginView extends Backbone.View
 
-  updateImageModel: =>
-    image = new Image
-      image_id: @get('image')
-      width: @get('image_width')
-      height: @get('image_height')
-      url: @get('image_url')
-    image.save {}, error: ->
-      image.create()
-    if @id and not @get('image')
-      @fallbackToDefaultImage()
-      @save()
-  
-  defaultImage: -> 
-  
-  getImageURL: ->
-    if img = @get('image_url')
-      # console.log 'ModelWithImage.getImageURL()', img
-      imageData = img.split("\n")
-      if imageData.length is 5
-        type = imageData[0].split(" ")[1]
-        # console.log 'image type', type
-        content = imageData[4]
-        "data:#{type};base64,#{content}"
-      else
-        img
-    else
-      @defaultImage()
-  
-  templateData: ->
-    _.extend @toJSON(),
-      { image_url: @getImageURL() }
+  template: """<div class="container" id="login">
+      <form action="POST" class="form-horizontal login-form">
+      <div class="modal login-modal" style="position: relative; top: auto; left: auto; margin: 0 auto; z-index: 1; max-width: 100%;">
+        <div class="modal-header">
+          <h3>Uniwersytet Ekonomiczny we Wrocławiu</h3>
+        </div>
+        <div class="modal-body">
+            <fieldset>
 
-  save: ->
-    @beforeSave()
-    super
+              <div class="control-group">
+                <label for="login-input" class="control-label">Login</label>
+                <div class="controls"><input type="text" id="login-input" class="input-xlarge" autofocus /></div>
+              </div>
+              <div class="control-group">
+                <label for="password-input" class="control-label">Hasło</label>
+                <div class="controls"><input type="password" id="password-input" class="input-xlarge" /></div>
+              </div>
+            </fieldset>
 
-  beforeSave: =>
-    unless @has('image_url')
-      @set({image_url: ""})
-    @preventImageDestruction()
-    @fallbackToDefaultImage()
+        </div>
+        <div class="modal-footer">
+          <input id="login-button" type="submit" class="btn btn-big btn-primary" value="Zaloguj" />
+        </div>
+      </div>
+      </form>
+      {{{ footer }}}
+    </div>"""
 
-  preventImageDestruction: =>
-    content = @get('image_content')
-    url = @get('image_url')
-    if content and content isnt url
-      @set image_url: content
+  events:
+    submit: 'submit'
 
-  fallbackToDefaultImage: =>
-    if @id and not @has('image')
-      @set image: @getImageId()
+  submit: (e) =>
+    # console.log "submited"
+    e.preventDefault()
+    $('#login-button').button('toggle')
+    user = new User({username: @$('#login-input').val(), password: @$('#password-input').val()})
+    # console.log "LOGIN user", user
+    user.login false,
+      success: (u) =>
+        # $('#login-button').button('toggle')
+        # console.log 'logged in user', user
+        # console.log 'StackMob.getLoggedInUser()', StackMob.getLoggedInUser()
+        @trigger 'login', user
+      error: (u, e) =>
+        @$('.control-group').addClass('error')
+        $('#login-button').button('toggle')
+
+  render: ->
+    @$el.html @template.render()
+    @$('#login-input').focus()
+    @
 
 ################### NOTIFICATIONS ###################
 
-class Notification extends StackMob.Model
+class Notification extends Model
   schemaName: 'notification'
   
   @maxLength: 200
@@ -679,7 +719,7 @@ class NotificationsView extends CollectionView
 
 ############################# SURVEYS #############################
 
-class Survey extends StackMob.Model
+class Survey extends Model
   schemaName: 'survey'
   
   defaults: ->
@@ -720,11 +760,11 @@ class Surveys extends LoadableCollection
     -model.get('createddate')
 
   
-class Answer extends StackMob.Model
+class Answer extends Model
   schemaName: 'answer'
 
 
-class Answers extends StackMob.Collection
+class Answers extends Collection
   model: Answer
   
   toJSON: ->
@@ -774,7 +814,7 @@ class Answers extends StackMob.Collection
 #     sum / contents.length
 
   
-class Question extends StackMob.Model
+class Question extends Model
   schemaName: 'question'
   
   defaults:
@@ -872,7 +912,7 @@ class Question extends StackMob.Model
         "[]"
       
 
-class Questions extends StackMob.Collection
+class Questions extends Collection
   model: Question
   
   types:
@@ -1452,32 +1492,9 @@ class InformationElement extends ModelWithImage
 class InformationElements extends SortableCollection
   model: InformationElement
 
-class InformationGroup extends StackMob.Model
+class InformationGroup extends Group
   schemaName: 'information_group'
   collectionClass: InformationElements
-  
-  saveInformations: =>
-    @informations.each (model) =>
-      model.save {survey: @id}
-  
-  getInformations: ->
-    unless @fetchElementsPromise?
-      @fetchElementsPromise = $.Deferred()
-      @informations = new @collectionClass()
-      if @id?
-        fetchMyElements = new StackMob.Collection.Query()
-        # console.log '@id', @id
-        fetchMyElements.equals(@schemaName, @id)
-        @informations.query(fetchMyElements)
-        # console.log 'waiting for reset', @informations
-        @informations.on 'all', (event) =>
-          # console.log 'informations event', event
-        @informations.on 'reset', =>
-          # console.log 'reset', @informations
-          @fetchElementsPromise.resolve(@informations)
-      else
-        @fetchElementsPromise.resolve(@informations)
-    @fetchElementsPromise
 
 class InformationGroups extends SortableCollection
   model: InformationGroup
@@ -1525,13 +1542,13 @@ class ElementView extends View
     # @model.on 'change', @render, @
     @model.on 'sync', @onSync, @
     @model.on 'change', @render, @
-    @model.on 'error', @onError, @
+    # @model.on 'error', @onError, @
   
   open: ->
     @model.isOpen = true
     @render()
   
-  onError: ->
+  # onError: ->
   
   persist: ->
     type = @model.get('type')
@@ -1544,21 +1561,24 @@ class ElementView extends View
   save: (event) ->
     event.preventDefault()
     @persist()
-    @$('.save-button').attr('disabled', 'disabled')
+    # @$('.save-button').attr('disabled', 'disabled')
+    @close()
     # console.log 'after save'
     
   
   destroy: (event) ->
     event.preventDefault()
-    @model.collection?.sort()
-    @model.collection?.remove @model
+    # @model.collection?.sort()
+    # @model.collection?.remove @model
     @model.save is_deleted: true
     
   
   onSync: ->
     @close()
     if @model.get('is_deleted') is true
-      @model.collection?.remove @model
+      if collection = @model.collection
+        collection.remove @model
+        collection.sort()
       @remove()
     else
       @render()
@@ -1570,7 +1590,7 @@ class ElementView extends View
   render: ->
     # console.log 'model render', @model.toJSON(), @model.changedAttributes()
     data = if @model.templateData? then @model.templateData() else @model.toJSON()
-    @$el.html @template().render _.extend(data, {isOpen: @model.isOpen, hasChanged: @model.changedAttributes()})
+    @$el.html @template().render _.extend(data, {isOpen: @model.isOpen, hasChanged: @model.isWaiting()})
     @
 
 class InformationElementView extends ElementView
@@ -1695,7 +1715,7 @@ class GroupShowView extends SortableCollectionView
   itemView: InformationElementView
   
   initialize: ->
-    @collection = @model.getInformations()
+    @collection = @model.getElements()
     super
   
   actionsButtonGroupTemplate: -> ""
@@ -1777,7 +1797,7 @@ class InformationGroupShowView extends GroupShowView
   
   createElement: (type) -> (event) =>
     event.preventDefault()
-    $.when(@model.getInformations()).then (informations) =>
+    $.when(@model.getElements()).then (informations) =>
       informations.add({type, position: informations.newPosition(), information_group: @model.id})
 
   actionsButtonGroupTemplate: -> """
@@ -1800,7 +1820,7 @@ class InformationGroupShowView extends GroupShowView
      
 ################### CONTACTS ########################
 
-class ContactElement extends StackMob.Model
+class ContactElement extends Model
   schemaName: 'contact_element'
 
   parse: (data) ->
@@ -1837,15 +1857,12 @@ class ContactElement extends StackMob.Model
 class ContactElements extends InformationElements
   model: ContactElement
 
-class ContactGroup extends InformationGroup
+class ContactGroup extends Group
   schemaName: 'contact_group'
   collectionClass: ContactElements
 
 class ContactGroups extends SortableCollection
   model: ContactGroup
-  
-  comparator: (model) ->
-    model.get('location')
 
 class ContactGroupView extends InformationGroupView
 
@@ -1920,7 +1937,7 @@ class ContactGroupShowView extends GroupShowView
     _(ContactElement.types).each (type) =>
       events["click .create-#{type.name}"] = (event) =>
         event.preventDefault()
-        $.when(@model.getInformations()).then (informations) =>
+        $.when(@model.getElements()).then (informations) =>
           newPosition = informations.newPosition()
           informations.add({type: type.id, position: newPosition, contact_group: @model.id})
     events
@@ -1955,7 +1972,7 @@ class ContactGroupShowView extends GroupShowView
 
 ################### PLACES ###################
 
-class Place extends StackMob.Model
+class Place extends Model
   schemaName: 'location'
 
 class Places extends LoadableCollection
@@ -2478,7 +2495,7 @@ class Restaurant extends ModelWithImage
   #   image_width: 122
   #   image_height: 124
 
-class Restaurants extends StackMob.Collection
+class Restaurants extends Collection
   model: Restaurant
   
   getById: (id, callback) ->
@@ -2498,7 +2515,7 @@ class MenuItem extends ModelWithImage
   #   image_width: 88
   #   image_height: 88
 
-class MenuItems extends StackMob.Collection
+class MenuItems extends Collection
   model: MenuItem
   
   parse: (response) ->

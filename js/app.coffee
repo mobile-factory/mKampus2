@@ -171,6 +171,7 @@ class Model extends StackMob.Model
     @meta =
       waiting: false
     @on 'sync', => @meta.waiting = false
+    @on 'error', => @meta.waiting = false
     super
   
   isWaiting: ->
@@ -333,6 +334,7 @@ class CollectionView extends View
       @$collection.html """<section class="item loading"><img src="/img/progress.gif"/></section>"""
   
   initialize: ->
+    super
     # console.log 'CollectionView initialized'
     @waitForCollection()
     
@@ -498,6 +500,7 @@ class SelectableView extends View
     """
 
   initialize: ->
+    super
     @$el.data('id', @model.id)
     @$el.data('sortable-id', @model.id)
     
@@ -732,6 +735,7 @@ class Survey extends Model
     null
   
   initialize: ->
+    super
     # @on 'show', => @getQuestions()
     @on 'sync', @saveQuestions
   
@@ -957,6 +961,7 @@ class SurveyView extends Backbone.View
     'click': 'select'
   
   initialize: ->
+    super
     @model.on 'change', @render
     $.when(@collection).then (collection) =>
       collection.on 'show', @onSelect
@@ -1054,6 +1059,7 @@ class QuestionEditView extends Backbone.View
     @setType(e)
   
   initialize: ->
+    super
     @isOpen = not @model.get('content')
     @model.collection.on 'edit', @onEdit
     @model.on 'destroy', @onDestroy
@@ -1539,16 +1545,17 @@ class ElementView extends View
       swapWith.save({}, {wait:true})
   
   initialize: ->
+    super
     # @model.on 'change', @render, @
     @model.on 'sync', @onSync, @
     @model.on 'change', @render, @
-    # @model.on 'error', @onError, @
+    @model.on 'error', @onError, @
   
   open: ->
     @model.isOpen = true
     @render()
   
-  # onError: ->
+  onError: ->
   
   persist: ->
     type = @model.get('type')
@@ -1652,20 +1659,21 @@ class InformationElementView extends ElementView
   
   initialize: ->
     super
-    @on 'error', @onError
   
   onError: (model, error) =>
-    unless @errorOccured
-      @errorOccured = true
-      if @model.get('type') is 'image' and @model.collection
+    unless @model.meta.errorOccured
+      @model.meta.errorOccured = true
+      if @model.get('type') is 'image'
         alert 'Nie udało się wysłać tego obrazka'
         if not @model.id
           @model.collection?.remove @model
           @remove()
+          @model.meta.errorOccured = false
         else
           @model.fetch success: =>
             @close()
-          @errorOccured = false
+            @model.meta.errorOccured = false
+        
   
   events: ->
     _.extend super,
@@ -2044,6 +2052,7 @@ class PlaceShowView extends Backbone.View
     'click .destroy': 'destroy'
   
   initialize: ->
+    super
     @model.on 'change', @render
     @model.on 'reset', @render
   
@@ -2148,6 +2157,7 @@ class RestaurantUserShowView extends Backbone.View
     'keyup .input-title': 'updateName'
 
   initialize: ({@user}) ->
+    super
     @model.on 'change', @render
     @model.on 'reset', @render
     
@@ -2216,6 +2226,7 @@ class App extends Backbone.Router
     'contact/:id': 'contact'
    
   initialize: ->
+    super
     @on 'all', @updateLinks
     @$main = $('body')
     
@@ -2608,6 +2619,7 @@ class RestaurantMenuItemView extends View
   """
   
   initialize: ->
+    super
     @model.on 'sync', @onSync
   
   events:
@@ -2654,6 +2666,7 @@ class RestaurantMenuItemView extends View
     @collection.remove @model
   
   initialize: ->
+    super
     @model.on 'save', @render
   
   render: =>

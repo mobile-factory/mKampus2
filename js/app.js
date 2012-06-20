@@ -188,6 +188,9 @@
       this.on('sync', function() {
         return _this.meta.waiting = false;
       });
+      this.on('error', function() {
+        return _this.meta.waiting = false;
+      });
       return Model.__super__.initialize.apply(this, arguments);
     };
 
@@ -515,6 +518,7 @@
 
     CollectionView.prototype.initialize = function() {
       var _this = this;
+      CollectionView.__super__.initialize.apply(this, arguments);
       this.waitForCollection();
       this.itemView || (this.itemView = this.options.itemView);
       return $.when(this.collection).then(function(collection) {
@@ -693,6 +697,7 @@
     };
 
     SelectableView.prototype.initialize = function() {
+      SelectableView.__super__.initialize.apply(this, arguments);
       this.$el.data('id', this.model.id);
       this.$el.data('sortable-id', this.model.id);
       this.model.on('change', this.render);
@@ -1006,6 +1011,7 @@
     };
 
     Survey.prototype.initialize = function() {
+      Survey.__super__.initialize.apply(this, arguments);
       return this.on('sync', this.saveQuestions);
     };
 
@@ -1284,6 +1290,7 @@
 
     SurveyView.prototype.initialize = function() {
       var _this = this;
+      SurveyView.__super__.initialize.apply(this, arguments);
       this.model.on('change', this.render);
       return $.when(this.collection).then(function(collection) {
         return collection.on('show', _this.onSelect);
@@ -1350,6 +1357,7 @@
     };
 
     QuestionEditView.prototype.initialize = function() {
+      QuestionEditView.__super__.initialize.apply(this, arguments);
       this.isOpen = !this.model.get('content');
       this.model.collection.on('edit', this.onEdit);
       return this.model.on('destroy', this.onDestroy);
@@ -2028,14 +2036,18 @@
     };
 
     ElementView.prototype.initialize = function() {
+      ElementView.__super__.initialize.apply(this, arguments);
       this.model.on('sync', this.onSync, this);
-      return this.model.on('change', this.render, this);
+      this.model.on('change', this.render, this);
+      return this.model.on('error', this.onError, this);
     };
 
     ElementView.prototype.open = function() {
       this.model.isOpen = true;
       return this.render();
     };
+
+    ElementView.prototype.onError = function() {};
 
     ElementView.prototype.persist = function() {
       var type;
@@ -2143,29 +2155,29 @@
     };
 
     InformationElementView.prototype.initialize = function() {
-      InformationElementView.__super__.initialize.apply(this, arguments);
-      return this.on('error', this.onError);
+      return InformationElementView.__super__.initialize.apply(this, arguments);
     };
 
     InformationElementView.prototype.onError = function(model, error) {
       var _ref,
         _this = this;
-      if (!this.errorOccured) {
-        this.errorOccured = true;
-        if (this.model.get('type') === 'image' && this.model.collection) {
+      if (!this.model.meta.errorOccured) {
+        this.model.meta.errorOccured = true;
+        if (this.model.get('type') === 'image') {
           alert('Nie udało się wysłać tego obrazka');
           if (!this.model.id) {
             if ((_ref = this.model.collection) != null) {
               _ref.remove(this.model);
             }
-            return this.remove();
+            this.remove();
+            return this.model.meta.errorOccured = false;
           } else {
-            this.model.fetch({
+            return this.model.fetch({
               success: function() {
-                return _this.close();
+                _this.close();
+                return _this.model.meta.errorOccured = false;
               }
             });
-            return this.errorOccured = false;
           }
         }
       }
@@ -2744,6 +2756,7 @@
     };
 
     PlaceShowView.prototype.initialize = function() {
+      PlaceShowView.__super__.initialize.apply(this, arguments);
       this.model.on('change', this.render);
       return this.model.on('reset', this.render);
     };
@@ -2881,6 +2894,7 @@
 
     RestaurantUserShowView.prototype.initialize = function(_arg) {
       this.user = _arg.user;
+      RestaurantUserShowView.__super__.initialize.apply(this, arguments);
       this.model.on('change', this.render);
       return this.model.on('reset', this.render);
     };
@@ -2978,6 +2992,7 @@
 
     App.prototype.initialize = function() {
       var _this = this;
+      App.__super__.initialize.apply(this, arguments);
       this.on('all', this.updateLinks);
       this.$main = $('body');
       this.Notifications = new Notifications();
@@ -3563,6 +3578,7 @@
     };
 
     RestaurantMenuItemView.prototype.initialize = function() {
+      RestaurantMenuItemView.__super__.initialize.apply(this, arguments);
       return this.model.on('sync', this.onSync);
     };
 
@@ -3621,6 +3637,7 @@
     };
 
     RestaurantMenuItemView.prototype.initialize = function() {
+      RestaurantMenuItemView.__super__.initialize.apply(this, arguments);
       return this.model.on('save', this.render);
     };
 

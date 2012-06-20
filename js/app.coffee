@@ -2791,7 +2791,7 @@ class RestaurantView extends CollectionView
                 <div class="control-group">
                   <label for="" class="control-label">Adres</label>
                   <div class="controls">
-                    <input type="text" class="span12 input-address" value="{{ address }}"/>
+                    <textarea class="span12 input-address">{{ address }}</textarea>
                   </div>
                 </div>
               

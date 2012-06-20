@@ -207,11 +207,11 @@ footer {
     min-height: 150px;
   }
   .selectable {
-    min-height: 100px;
+    min-height: 120px;
   }
 }
 .selectable.ui-sortable-helper {
-  min-height: 100px;
+  min-height: 120px;
 }
 @media (min-with: 481px) and (max-width: 767px) {
   .login-form {

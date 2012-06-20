@@ -524,9 +524,12 @@ class SelectableView extends View
   triggerSelect: =>
     @model?.trigger 'select', @model
     @trigger 'select', @model
-
+  
+  getID: ->
+    @model.id
+  
   render: =>
-    @$el.html @template().render _.extend(@model.toJSON(), {id: @model.id, isWaiting: @model.isWaiting()})    
+    @$el.html @template().render _.extend(@model.toJSON(), {id: @getID(), isWaiting: @model.isWaiting()})    
     # if @model.hasChanged()
     #   # console.log 'waiting', @model.get 'name'
     #   @$el.addClass('waiting')
@@ -2105,6 +2108,7 @@ class RestaurantUser extends StackMob.User
   
   isWaiting: ->
     @meta.waiting
+    false
   
   save: ->
     super
@@ -2128,9 +2132,14 @@ class RestaurantUsers extends LoadableCollection
 class RestaurantUserView extends SelectableView
   labelAttribute: 'username'
   
+  getID: ->
+    @model.get('username')
+  
   initialize: ->
     super
     @model.on 'sync', @render, @
+    @model.on 'change', @render, @
+    @model.on 'all', (event) => console.log 'event', event
 
 class RestaurantUserShowView extends Backbone.View
   labelAttribute: 'username'
@@ -2863,7 +2872,7 @@ $ ->
             $('body').html view.render().el
   
   bazylia = off
-  auth = off
+  auth = on
   
   if bazylia
     window.globals.current_user = "Bazylia"

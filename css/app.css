@@ -248,6 +248,9 @@ footer {
 .waiting form {
   background: url("/img/waiting.png");
 }
+.waiting.active {
+  background: url("/img/waiting-active.png");
+}
 .loading {
   text-align: center;
   padding-top: 40px;

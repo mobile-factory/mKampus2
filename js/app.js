@@ -724,9 +724,13 @@
       return this.trigger('select', this.model);
     };
 
+    SelectableView.prototype.getID = function() {
+      return this.model.id;
+    };
+
     SelectableView.prototype.render = function() {
       this.$el.html(this.template().render(_.extend(this.model.toJSON(), {
-        id: this.model.id,
+        id: this.getID(),
         isWaiting: this.model.isWaiting()
       })));
       this.$el.toggleClass('waiting', this.model.isWaiting());
@@ -2828,7 +2832,8 @@
     };
 
     RestaurantUser.prototype.isWaiting = function() {
-      return this.meta.waiting;
+      this.meta.waiting;
+      return false;
     };
 
     RestaurantUser.prototype.save = function() {
@@ -2889,9 +2894,18 @@
 
     RestaurantUserView.prototype.labelAttribute = 'username';
 
+    RestaurantUserView.prototype.getID = function() {
+      return this.model.get('username');
+    };
+
     RestaurantUserView.prototype.initialize = function() {
+      var _this = this;
       RestaurantUserView.__super__.initialize.apply(this, arguments);
-      return this.model.on('sync', this.render, this);
+      this.model.on('sync', this.render, this);
+      this.model.on('change', this.render, this);
+      return this.model.on('all', function(event) {
+        return console.log('event', event);
+      });
     };
 
     return RestaurantUserView;
@@ -3786,7 +3800,7 @@
       });
     };
     bazylia = false;
-    auth = false;
+    auth = true;
     if (bazylia) {
       window.globals.current_user = "Bazylia";
       return displayRestaurantPanelById('Bazylia', new User({

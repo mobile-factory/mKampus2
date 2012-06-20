@@ -687,6 +687,11 @@
     };
 
     ModelWithImage.prototype.beforeSave = function() {
+      if (!this.has('image_url')) {
+        this.set({
+          image_url: ""
+        });
+      }
       this.preventImageDestruction();
       return this.fallbackToDefaultImage();
     };
@@ -1980,7 +1985,7 @@
       return this.render();
     };
 
-    ElementView.prototype.onError = function(error) {};
+    ElementView.prototype.onError = function() {};
 
     ElementView.prototype.persist = function() {
       var type;
@@ -2098,12 +2103,26 @@
       return this.on('error', this.onError);
     };
 
-    InformationElementView.prototype.onError = function() {
-      if (this.model.get('type') === 'image') {
-        alert('Nie udało się wysłać tego obrazka');
-        if (!this.model.id) {
-          this.model.collection.remove(this.model);
-          return this.remove();
+    InformationElementView.prototype.onError = function(model, error) {
+      var _ref,
+        _this = this;
+      if (!this.errorOccured) {
+        this.errorOccured = true;
+        if (this.model.get('type') === 'image' && this.model.collection) {
+          alert('Nie udało się wysłać tego obrazka');
+          if (!this.model.id) {
+            if ((_ref = this.model.collection) != null) {
+              _ref.remove(this.model);
+            }
+            return this.remove();
+          } else {
+            this.model.fetch({
+              success: function() {
+                return _this.close();
+              }
+            });
+            return this.errorOccured = false;
+          }
         }
       }
     };
@@ -2115,10 +2134,7 @@
     };
 
     InformationElementView.prototype.open = function() {
-      InformationElementView.__super__.open.apply(this, arguments);
-      if (this.model.get('type') === 'image') {
-        return this.$('input[type=file]').click();
-      }
+      return InformationElementView.__super__.open.apply(this, arguments);
     };
 
     return InformationElementView;
@@ -2342,11 +2358,6 @@
         icon: 'user',
         add: 'osobę'
       }, {
-        name: 'address',
-        id: "4",
-        icon: 'home',
-        add: 'adres'
-      }, {
         name: 'phone',
         id: "1",
         icon: 'headphones',
@@ -2361,6 +2372,11 @@
         id: "3",
         icon: 'globe',
         add: 'stronę www'
+      }, {
+        name: 'address',
+        id: "4",
+        icon: 'home',
+        add: 'adres'
       }, {
         name: 'text',
         id: "5",
@@ -2582,7 +2598,7 @@
           return $.when(_this.model.getInformations()).then(function(informations) {
             var newPosition;
             newPosition = informations.newPosition();
-            return informations.create({
+            return informations.add({
               type: type.id,
               position: newPosition,
               contact_group: _this.model.id
@@ -3113,7 +3129,7 @@
       var addView, collection, listView, view,
         _this = this;
       collection = this.ContactGroups;
-      listView = new SortableCollectionView({
+      listView = new MenuCollectionView({
         collection: collection.load(),
         itemView: ContactGroupView
       });
@@ -3676,7 +3692,7 @@
       });
     };
     bazylia = false;
-    auth = true;
+    auth = false;
     if (bazylia) {
       window.globals.current_user = "Bazylia";
       return displayRestaurantPanelById('Bazylia', new User({

@@ -531,10 +531,12 @@ class ModelWithImage extends StackMob.Model
     super
 
   beforeSave: =>
+    unless @has('image_url')
+      @set({image_url: ""})
     @preventImageDestruction()
     @fallbackToDefaultImage()
 
-  preventImageDestruction: => # (yes, StackMob do this by default)
+  preventImageDestruction: =>
     content = @get('image_content')
     url = @get('image_url')
     if content and content isnt url
@@ -1529,7 +1531,7 @@ class ElementView extends View
     @model.isOpen = true
     @render()
   
-  onError: (error) ->
+  onError: ->
   
   persist: ->
     type = @model.get('type')
@@ -1632,12 +1634,18 @@ class InformationElementView extends ElementView
     super
     @on 'error', @onError
   
-  onError: =>
-    if @model.get('type') is 'image'
-      alert 'Nie udało się wysłać tego obrazka'
-      if not @model.id
-        @model.collection.remove @model
-        @remove()
+  onError: (model, error) =>
+    unless @errorOccured
+      @errorOccured = true
+      if @model.get('type') is 'image' and @model.collection
+        alert 'Nie udało się wysłać tego obrazka'
+        if not @model.id
+          @model.collection?.remove @model
+          @remove()
+        else
+          @model.fetch success: =>
+            @close()
+          @errorOccured = false
   
   events: ->
     _.extend super,
@@ -1645,8 +1653,8 @@ class InformationElementView extends ElementView
     
   open: ->
     super
-    if @model.get('type') is 'image'
-      @$('input[type=file]').click()
+    # if @model.get('type') is 'image'
+      # @$('input[type=file]').click()
 
 class SortableCollectionView extends CollectionView
   
@@ -1804,10 +1812,10 @@ class ContactElement extends StackMob.Model
   @types: [
       {name: 'header', id: "200", icon: 'bookmark', add: 'nagłówek'}
     , {name: 'person', id: "100", icon: 'user', add: 'osobę'}
-    , {name: 'address', id: "4", icon: 'home', add: 'adres'}
     , {name: 'phone', id: "1", icon: 'headphones', add: 'telefon'}
     , {name: 'email', id: "2", icon: 'envelope', add: 'email'}
     , {name: 'url', id: "3", icon: 'globe', add: 'stronę www'}
+    , {name: 'address', id: "4", icon: 'home', add: 'adres'}
     , {name: 'text', id: "5", icon: 'pencil', add: 'własną etykietę'}
     ]
   
@@ -1913,11 +1921,8 @@ class ContactGroupShowView extends GroupShowView
       events["click .create-#{type.name}"] = (event) =>
         event.preventDefault()
         $.when(@model.getInformations()).then (informations) =>
-          # console.log 'informations', informations
           newPosition = informations.newPosition()
-          # console.log 'newPosition', newPosition
-          informations.create({type: type.id, position: newPosition, contact_group: @model.id})
-    # console.log 'events', events
+          informations.add({type: type.id, position: newPosition, contact_group: @model.id})
     events
   
   events: =>
@@ -2315,7 +2320,7 @@ class App extends Backbone.Router
   contact: (id) =>
     collection = @ContactGroups
 
-    listView = new SortableCollectionView({collection: collection.load(), itemView: ContactGroupView})
+    listView = new MenuCollectionView({collection: collection.load(), itemView: ContactGroupView})
 
     if id? # pokaż dany element
       if id is 'new'
@@ -2797,7 +2802,7 @@ $ ->
             $('body').html view.render().el
   
   bazylia = off
-  auth = on
+  auth = off
   
   if bazylia
     window.globals.current_user = "Bazylia"

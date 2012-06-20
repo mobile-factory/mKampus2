@@ -363,8 +363,8 @@
         if (this.id != null) {
           fetchMyElements = new StackMob.Collection.Query();
           fetchMyElements.equals(this.schemaName, this.id);
+          fetchMyElements.notEquals('is_deleted', true);
           this.informations.query(fetchMyElements);
-          this.informations.on('all', function(event) {});
           this.informations.on('reset', function() {
             return _this.fetchElementsPromise.resolve(_this.informations);
           });
@@ -386,17 +386,24 @@
     LoadableCollection.name = 'LoadableCollection';
 
     function LoadableCollection() {
+      this.load = __bind(this.load, this);
       return LoadableCollection.__super__.constructor.apply(this, arguments);
     }
 
+    LoadableCollection.prototype.isDeletable = true;
+
     LoadableCollection.prototype.load = function() {
-      var _this = this;
+      var fetchMyElements,
+        _this = this;
       if (this.fetchPromise == null) {
         this.fetchPromise = $.Deferred();
-        this.fetch({
-          success: function() {
-            return _this.fetchPromise.resolve(_this);
-          }
+        fetchMyElements = new StackMob.Collection.Query();
+        if (this.isDeletable) {
+          fetchMyElements.notEquals('is_deleted', true);
+        }
+        this.query(fetchMyElements);
+        this.on('reset', function() {
+          return _this.fetchPromise.resolve(_this);
         });
       }
       return this.fetchPromise;
@@ -840,6 +847,8 @@
 
     Notifications.prototype.model = Notification;
 
+    Notifications.prototype.isDeletable = false;
+
     Notifications.prototype.comparator = function(model) {
       return -model.get('createddate');
     };
@@ -1059,6 +1068,8 @@
     }
 
     Surveys.prototype.model = Survey;
+
+    Surveys.prototype.isDeletable = false;
 
     Surveys.prototype.comparator = function(model) {
       return -model.get('createddate');
@@ -2802,6 +2813,29 @@
       return RestaurantUser.__super__.constructor.apply(this, arguments);
     }
 
+    RestaurantUser.prototype.initialize = function() {
+      var _this = this;
+      this.meta = {
+        waiting: false
+      };
+      this.on('sync', function() {
+        return _this.meta.waiting = false;
+      });
+      this.on('error', function() {
+        return _this.meta.waiting = false;
+      });
+      return RestaurantUser.__super__.initialize.apply(this, arguments);
+    };
+
+    RestaurantUser.prototype.isWaiting = function() {
+      return this.meta.waiting;
+    };
+
+    RestaurantUser.prototype.save = function() {
+      RestaurantUser.__super__.save.apply(this, arguments);
+      return this.meta.waiting = true;
+    };
+
     RestaurantUser.prototype.defaults = {
       role: "restaurant"
     };
@@ -2830,6 +2864,8 @@
     }
 
     RestaurantUsers.prototype.model = RestaurantUser;
+
+    RestaurantUsers.prototype.isDeletable = false;
 
     RestaurantUsers.prototype.parse = function(response) {
       return _(response).reject(function(model) {
@@ -3488,7 +3524,7 @@
 
     return Restaurants;
 
-  })(Collection);
+  })(LoadableCollection);
 
   MenuItem = (function(_super) {
 

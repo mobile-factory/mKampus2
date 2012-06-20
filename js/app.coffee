@@ -260,9 +260,10 @@ class Group extends Model
         fetchMyElements = new StackMob.Collection.Query()
         # console.log '@id', @id
         fetchMyElements.equals(@schemaName, @id)
+        fetchMyElements.notEquals('is_deleted', true)
         @informations.query(fetchMyElements)
         # console.log 'waiting for reset', @informations
-        @informations.on 'all', (event) =>
+        # @informations.on 'all', (event) =>
           # console.log 'informations event', event
         @informations.on 'reset', =>
           # console.log 'reset', @informations
@@ -272,14 +273,21 @@ class Group extends Model
     @fetchElementsPromise
 
 class LoadableCollection extends Collection
-  load: ->
+  
+  isDeletable: true
+  
+  load: =>
     unless @fetchPromise?
       @fetchPromise = $.Deferred()
-      @fetch success: =>
+      fetchMyElements = new StackMob.Collection.Query()
+      fetchMyElements.notEquals('is_deleted', true) if @isDeletable
+      @query fetchMyElements
+      @on 'reset', =>
         @fetchPromise.resolve(@)
     @fetchPromise
 
 class SortableCollection extends LoadableCollection
+  
   comparator: (model) ->
     model.get('position')
 
@@ -604,6 +612,8 @@ class Notification extends Model
 class Notifications extends LoadableCollection
   model: Notification
   
+  isDeletable: false
+  
   comparator: (model) ->
     -model.get('createddate')
 
@@ -761,6 +771,8 @@ class Survey extends Model
 
 class Surveys extends LoadableCollection
   model: Survey
+  
+  isDeletable: false
   
   comparator: (model) ->
     -model.get('createddate')
@@ -2084,6 +2096,20 @@ class PlaceShowView extends Backbone.View
 
 class RestaurantUser extends StackMob.User
   
+  initialize: ->
+    @meta =
+      waiting: false
+    @on 'sync', => @meta.waiting = false
+    @on 'error', => @meta.waiting = false
+    super
+  
+  isWaiting: ->
+    @meta.waiting
+  
+  save: ->
+    super
+    @meta.waiting = true
+  
   defaults:
     role: "restaurant"
   
@@ -2093,6 +2119,8 @@ class RestaurantUser extends StackMob.User
 
 class RestaurantUsers extends LoadableCollection
   model: RestaurantUser
+  
+  isDeletable: false
   
   parse: (response) ->
     _(response).reject (model) -> model.is_deleted or model.role isnt "restaurant"
@@ -2509,7 +2537,7 @@ class Restaurant extends ModelWithImage
   #   image_width: 122
   #   image_height: 124
 
-class Restaurants extends Collection
+class Restaurants extends LoadableCollection
   model: Restaurant
   
   getById: (id, callback) ->

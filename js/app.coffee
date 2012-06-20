@@ -490,6 +490,7 @@ class SelectableView extends View
     'data-sortable-id': @model.id
   
   template: -> """
+    <div>
     <!-- <div class="selectable sortable span4" data-id="{{ id }}" data-sortable-id= "{{ id }}"> -->
     <!-- <div class="{{#if isWaiting}} waiting {{/if}}"> -->
       <p class="date">{{{ timeSwitch createddate }}}</p>
@@ -497,6 +498,7 @@ class SelectableView extends View
         {{#if #{@labelAttribute} }} {{ #{@labelAttribute} }} {{else}} #{@placeholderLabel} {{/if}}
       </p>
     <!-- </div> -->
+    </div>
     """
 
   initialize: ->

@@ -693,7 +693,7 @@
     };
 
     SelectableView.prototype.template = function() {
-      return "<!-- <div class=\"selectable sortable span4\" data-id=\"{{ id }}\" data-sortable-id= \"{{ id }}\"> -->\n<!-- <div class=\"{{#if isWaiting}} waiting {{/if}}\"> -->\n  <p class=\"date\">{{{ timeSwitch createddate }}}</p>\n  <p class=\"content\">\n    {{#if " + this.labelAttribute + " }} {{ " + this.labelAttribute + " }} {{else}} " + this.placeholderLabel + " {{/if}}\n  </p>\n<!-- </div> -->";
+      return "<div>\n<!-- <div class=\"selectable sortable span4\" data-id=\"{{ id }}\" data-sortable-id= \"{{ id }}\"> -->\n<!-- <div class=\"{{#if isWaiting}} waiting {{/if}}\"> -->\n  <p class=\"date\">{{{ timeSwitch createddate }}}</p>\n  <p class=\"content\">\n    {{#if " + this.labelAttribute + " }} {{ " + this.labelAttribute + " }} {{else}} " + this.placeholderLabel + " {{/if}}\n  </p>\n<!-- </div> -->\n</div>";
     };
 
     SelectableView.prototype.initialize = function() {

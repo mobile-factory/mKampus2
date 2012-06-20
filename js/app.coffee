@@ -188,12 +188,14 @@ class ModelWithImage extends Model
 
   initialize: ->
     super
-    @on 'sync', @updateImageModel, @
+    console.log 'initialize of ModelWith Image', @
+    @on 'sync', @updateImageModel
     
   getImageId: ->
     "#{@constructor.name}_#{@id}"
 
   updateImageModel: =>
+    console.log 'sync -> updateImageModel', @
     image = new Image
       image_id: @get('image')
       width: @get('image_width')
@@ -310,6 +312,9 @@ class View extends Backbone.View
   getImagePreview: -> @$('.image-preview')
   
   onImageChange: (e) ->
+    console.log 'on image change'
+    console.log 'image_preview', @getImagePreview()
+    
     e.stopPropagation()
     e.preventDefault()
     file = e.target.files[0]
@@ -2561,6 +2566,10 @@ class Restaurants extends LoadableCollection
 class MenuItem extends ModelWithImage
   schemaName: 'menu_item'
   
+  initialize: ->
+    super
+    @on 'all', (event) => console.log 'event', event, @
+  
   # defaults:
   #   image_url: '/img/menu-item.png'
   #   image_width: 88
@@ -2590,7 +2599,7 @@ class MenuItems extends Collection
 
 class RestaurantMenuItemView extends View
   template: -> """
-    <section class="menu-item editable {{#if name}} {{else}} active {{/if}}">
+    <section class="menu-item editable">
       <div class="configurable show">
         <h3>
           {{#if is_featured}}
@@ -2660,7 +2669,9 @@ class RestaurantMenuItemView extends View
   
   initialize: ->
     super
-    @model.on 'sync', @onSync
+    @model.on 'sync', @onSync, @
+    @model.on 'error', @onError, @
+    console.log 'RestaurantMenuItemView initialized'
   
   events:
     'click .show': 'edit'
@@ -2669,33 +2680,44 @@ class RestaurantMenuItemView extends View
     'click .destroy': 'destroy'
     'change .input-image': 'onImageChange'
   
-  onSync: (e) =>
-    # console.log 'onSync in menu item view'
-    @$('section').removeClass('waiting')
-    @render()
+  onSync: (e) ->
+    console.log 'onSync'
+    @show()
+  
+  onError: (e) ->
+    alert('Aktualizacja nie powiodła się, spróbuj ponownie później')
+    @show()
     
   edit: (e) =>
-    @$('section').addClass 'active'
+    @model.meta.editMode = true
+    @render()
   
   show: (e) =>
-    @$('section').removeClass 'active'
+    @model.meta.editMode = false
+    @render()
   
   save: (e) =>
     # console.log 'save'
     e.preventDefault()
     e.stopPropagation()
+    
+    name = @$('.input-name').val()
+    desc = @$('.input-description').val()
+    price = Number(@$('.input-price').val())
+    is_featured = @$('.input-featured').attr('checked')
+    
+    unless name
+      alert("Musisz podać nazwę")
+      @$('.input-name').focus()
+      return
+    
     @model.set
       name: @$('.input-name').val()
       description: @$('.input-description').val()
       price: Number(@$('.input-price').val())
       is_featured: !! @$('.input-featured').attr('checked')
       restaurant: @options.restaurant
-    @model.save {},
-      success: =>
-        @onSync()
-      error: =>
-        alert('Aktualizacja nie powiodła się, spróbuj ponownie później')
-        @$('section').removeClass 'active'
+    @model.save()
     @$('section').addClass('waiting')
   
   destroy: (e) =>
@@ -2705,13 +2727,19 @@ class RestaurantMenuItemView extends View
     @remove()
     @collection.remove @model
   
-  initialize: ->
-    super
-    @model.on 'save', @render
+  # initialize: ->
+  #   super
+  #   @model.on 'save', @render
   
   render: =>
     # console.log 'is_featured', @model.get('is_featured')
     @$el.html @template().render @model.toJSON()
+    @$('section').toggleClass('waiting', @model.meta.waiting)
+    if @model.meta.editMode or not @model.get('name')
+      @$('section').addClass('active')
+    else
+      @$('section').removeClass('active')
+    # @$('section').toggleClass('active', not @model.meta.editMode)
     @
 
 class RestaurantView extends CollectionView
@@ -2843,7 +2871,7 @@ class RestaurantView extends CollectionView
   create: (e) =>
     e.preventDefault()
     # console.log '@collection', @collection
-    @collection.create new MenuItem
+    @collection.add new MenuItem
   
   render: =>
     @$el.html @template().render @model.toJSON()

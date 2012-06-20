@@ -242,7 +242,8 @@
 
     ModelWithImage.prototype.initialize = function() {
       ModelWithImage.__super__.initialize.apply(this, arguments);
-      return this.on('sync', this.updateImageModel, this);
+      console.log('initialize of ModelWith Image', this);
+      return this.on('sync', this.updateImageModel);
     };
 
     ModelWithImage.prototype.getImageId = function() {
@@ -251,6 +252,7 @@
 
     ModelWithImage.prototype.updateImageModel = function() {
       var image;
+      console.log('sync -> updateImageModel', this);
       image = new Image({
         image_id: this.get('image'),
         width: this.get('image_width'),
@@ -473,6 +475,8 @@
     View.prototype.onImageChange = function(e) {
       var file, fileContent, reader,
         _this = this;
+      console.log('on image change');
+      console.log('image_preview', this.getImagePreview());
       e.stopPropagation();
       e.preventDefault();
       file = e.target.files[0];
@@ -3552,6 +3556,14 @@
 
     MenuItem.prototype.schemaName = 'menu_item';
 
+    MenuItem.prototype.initialize = function() {
+      var _this = this;
+      MenuItem.__super__.initialize.apply(this, arguments);
+      return this.on('all', function(event) {
+        return console.log('event', event, _this);
+      });
+    };
+
     return MenuItem;
 
   })(ModelWithImage);
@@ -3619,18 +3631,18 @@
       this.show = __bind(this.show, this);
 
       this.edit = __bind(this.edit, this);
-
-      this.onSync = __bind(this.onSync, this);
       return RestaurantMenuItemView.__super__.constructor.apply(this, arguments);
     }
 
     RestaurantMenuItemView.prototype.template = function() {
-      return "<section class=\"menu-item editable {{#if name}} {{else}} active {{/if}}\">\n  <div class=\"configurable show\">\n    <h3>\n      {{#if is_featured}}\n        <i class=\"icon-star\"></i>\n      {{/if}}\n      {{ name }}\n      <small>{{ price }} zł</small>\n    </h3>\n    <p>{{ description }}</p>\n  </div>\n  <div class=\"row-fluid edit\">\n    <form class=\"span12 item compact-bottom\">\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\"></label>\n        <div class=\"controls\">\n          <img class=\"image-preview\" src=\"{{ image_url }}\"/>\n        </div>\n      </div>\n    \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Zdjęcie</label>\n        <div class=\"controls\">\n          <input type=\"file\" class=\"input-image\" name=\"image\" />\n        </div>\n      </div>\n    \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Nazwa</label>\n        <div class=\"controls\"><input type=\"text\" class=\"span12 input-name\" value=\"{{ name }}\"/></div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Cena</label>\n        <div class=\"controls\"><input type=\"text\" class=\"span12 input-price\" value=\"{{ price }}\" placeholder=\"9.99\"/></div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Opis</label>\n        <div class=\"controls\">\n          <textarea rows=\"3\" class=\"span12 input-description\">{{ description }}</textarea>\n        </div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\"><i class=\"icon-star\"></i> Polecane</label>\n        <div class=\"controls\">\n            <input type=\"checkbox\" class=\"span12 input-featured\" {{#if is_featured}}checked{{/if}}/>\n        </div>\n      </div>\n      \n      <div class=\"form-actions compact\">\n        <button class=\"btn btn-primary btn-large save pull-right\">\n          <i class=\"icon-ok icon-white\"></i>\n          Zapisz\n        </button>\n        <button class=\"btn btn-large destroy\">\n          <i class=\"icon-remove\"></i>\n          Usuń\n        </button>\n      </div>\n      \n    </form>\n  </div>\n</section>";
+      return "<section class=\"menu-item editable\">\n  <div class=\"configurable show\">\n    <h3>\n      {{#if is_featured}}\n        <i class=\"icon-star\"></i>\n      {{/if}}\n      {{ name }}\n      <small>{{ price }} zł</small>\n    </h3>\n    <p>{{ description }}</p>\n  </div>\n  <div class=\"row-fluid edit\">\n    <form class=\"span12 item compact-bottom\">\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\"></label>\n        <div class=\"controls\">\n          <img class=\"image-preview\" src=\"{{ image_url }}\"/>\n        </div>\n      </div>\n    \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Zdjęcie</label>\n        <div class=\"controls\">\n          <input type=\"file\" class=\"input-image\" name=\"image\" />\n        </div>\n      </div>\n    \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Nazwa</label>\n        <div class=\"controls\"><input type=\"text\" class=\"span12 input-name\" value=\"{{ name }}\"/></div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Cena</label>\n        <div class=\"controls\"><input type=\"text\" class=\"span12 input-price\" value=\"{{ price }}\" placeholder=\"9.99\"/></div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Opis</label>\n        <div class=\"controls\">\n          <textarea rows=\"3\" class=\"span12 input-description\">{{ description }}</textarea>\n        </div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\"><i class=\"icon-star\"></i> Polecane</label>\n        <div class=\"controls\">\n            <input type=\"checkbox\" class=\"span12 input-featured\" {{#if is_featured}}checked{{/if}}/>\n        </div>\n      </div>\n      \n      <div class=\"form-actions compact\">\n        <button class=\"btn btn-primary btn-large save pull-right\">\n          <i class=\"icon-ok icon-white\"></i>\n          Zapisz\n        </button>\n        <button class=\"btn btn-large destroy\">\n          <i class=\"icon-remove\"></i>\n          Usuń\n        </button>\n      </div>\n      \n    </form>\n  </div>\n</section>";
     };
 
     RestaurantMenuItemView.prototype.initialize = function() {
       RestaurantMenuItemView.__super__.initialize.apply(this, arguments);
-      return this.model.on('sync', this.onSync);
+      this.model.on('sync', this.onSync, this);
+      this.model.on('error', this.onError, this);
+      return console.log('RestaurantMenuItemView initialized');
     };
 
     RestaurantMenuItemView.prototype.events = {
@@ -3642,22 +3654,38 @@
     };
 
     RestaurantMenuItemView.prototype.onSync = function(e) {
-      this.$('section').removeClass('waiting');
-      return this.render();
+      console.log('onSync');
+      return this.show();
+    };
+
+    RestaurantMenuItemView.prototype.onError = function(e) {
+      alert('Aktualizacja nie powiodła się, spróbuj ponownie później');
+      return this.show();
     };
 
     RestaurantMenuItemView.prototype.edit = function(e) {
-      return this.$('section').addClass('active');
+      this.model.meta.editMode = true;
+      return this.render();
     };
 
     RestaurantMenuItemView.prototype.show = function(e) {
-      return this.$('section').removeClass('active');
+      this.model.meta.editMode = false;
+      return this.render();
     };
 
     RestaurantMenuItemView.prototype.save = function(e) {
-      var _this = this;
+      var desc, is_featured, name, price;
       e.preventDefault();
       e.stopPropagation();
+      name = this.$('.input-name').val();
+      desc = this.$('.input-description').val();
+      price = Number(this.$('.input-price').val());
+      is_featured = this.$('.input-featured').attr('checked');
+      if (!name) {
+        alert("Musisz podać nazwę");
+        this.$('.input-name').focus();
+        return;
+      }
       this.model.set({
         name: this.$('.input-name').val(),
         description: this.$('.input-description').val(),
@@ -3665,15 +3693,7 @@
         is_featured: !!this.$('.input-featured').attr('checked'),
         restaurant: this.options.restaurant
       });
-      this.model.save({}, {
-        success: function() {
-          return _this.onSync();
-        },
-        error: function() {
-          alert('Aktualizacja nie powiodła się, spróbuj ponownie później');
-          return _this.$('section').removeClass('active');
-        }
-      });
+      this.model.save();
       return this.$('section').addClass('waiting');
     };
 
@@ -3687,13 +3707,14 @@
       return this.collection.remove(this.model);
     };
 
-    RestaurantMenuItemView.prototype.initialize = function() {
-      RestaurantMenuItemView.__super__.initialize.apply(this, arguments);
-      return this.model.on('save', this.render);
-    };
-
     RestaurantMenuItemView.prototype.render = function() {
       this.$el.html(this.template().render(this.model.toJSON()));
+      this.$('section').toggleClass('waiting', this.model.meta.waiting);
+      if (this.model.meta.editMode || !this.model.get('name')) {
+        this.$('section').addClass('active');
+      } else {
+        this.$('section').removeClass('active');
+      }
       return this;
     };
 
@@ -3753,7 +3774,7 @@
 
     RestaurantView.prototype.create = function(e) {
       e.preventDefault();
-      return this.collection.create(new MenuItem);
+      return this.collection.add(new MenuItem);
     };
 
     RestaurantView.prototype.render = function() {

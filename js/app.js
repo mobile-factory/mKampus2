@@ -3635,7 +3635,7 @@
     }
 
     RestaurantMenuItemView.prototype.template = function() {
-      return "<section class=\"menu-item editable\">\n  <div class=\"configurable show\">\n    <h3>\n      {{#if is_featured}}\n        <i class=\"icon-star\"></i>\n      {{/if}}\n      {{ name }}\n      <small>{{ price }} zł</small>\n    </h3>\n    <p>{{ description }}</p>\n  </div>\n  <div class=\"row-fluid edit\">\n    <form class=\"span12 item compact-bottom\">\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\"></label>\n        <div class=\"controls\">\n          <img class=\"image-preview\" src=\"{{ image_url }}\"/>\n        </div>\n      </div>\n    \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Zdjęcie</label>\n        <div class=\"controls\">\n          <input type=\"file\" class=\"input-image\" name=\"image\" />\n        </div>\n      </div>\n    \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Nazwa</label>\n        <div class=\"controls\"><input type=\"text\" class=\"span12 input-name\" value=\"{{ name }}\"/></div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Cena</label>\n        <div class=\"controls\"><input type=\"text\" class=\"span12 input-price\" value=\"{{ price }}\" placeholder=\"9.99\"/></div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Opis</label>\n        <div class=\"controls\">\n          <textarea rows=\"3\" class=\"span12 input-description\">{{ description }}</textarea>\n        </div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\"><i class=\"icon-star\"></i> Polecane</label>\n        <div class=\"controls\">\n            <input type=\"checkbox\" class=\"span12 input-featured\" {{#if is_featured}}checked{{/if}}/>\n        </div>\n      </div>\n      \n      <div class=\"form-actions compact\">\n        <button class=\"btn btn-primary btn-large save pull-right\">\n          <i class=\"icon-ok icon-white\"></i>\n          Zapisz\n        </button>\n        <button class=\"btn btn-large destroy\">\n          <i class=\"icon-remove\"></i>\n          Usuń\n        </button>\n      </div>\n      \n    </form>\n  </div>\n</section>";
+      return "<section class=\"menu-item editable\">\n  <div class=\"configurable show\">\n    <div class=\"row-fluid\">\n      <div class=\"span2\">\n        <img src=\"{{ image_url }}\" width=\"50px\" />\n      </div>\n      <div class=\"span10\">\n        <h3>\n          {{#if is_featured}}\n            <i class=\"icon-star\"></i>\n          {{/if}}\n          {{ name }}\n          <small>{{ price }} zł</small>\n        </h3>\n        <p>{{ description }}</p>\n      </div>\n    </div>\n  </div>\n  <div class=\"row-fluid edit\">\n    <form class=\"span12 item compact-bottom\">\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\"></label>\n        <div class=\"controls\">\n          <img class=\"image-preview\" src=\"{{ image_url }}\"/>\n        </div>\n      </div>\n    \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Zdjęcie</label>\n        <div class=\"controls\">\n          <input type=\"file\" class=\"input-image\" name=\"image\" />\n        </div>\n      </div>\n    \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Nazwa</label>\n        <div class=\"controls\"><input type=\"text\" class=\"span12 input-name\" value=\"{{ name }}\"/></div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Cena</label>\n        <div class=\"controls\"><input type=\"text\" class=\"span12 input-price\" value=\"{{ price }}\" placeholder=\"9.99\"/></div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\">Opis</label>\n        <div class=\"controls\">\n          <textarea rows=\"3\" class=\"span12 input-description\">{{ description }}</textarea>\n        </div>\n      </div>\n      \n      <div class=\"control-group\">\n        <label for=\"\" class=\"control-label\"><i class=\"icon-star\"></i> Polecane</label>\n        <div class=\"controls\">\n            <input type=\"checkbox\" class=\"span12 input-featured\" {{#if is_featured}}checked{{/if}}/>\n        </div>\n      </div>\n      \n      <div class=\"form-actions compact\">\n        \n        <div class=\"btn-group pull-right\">\n          <button class=\"btn btn-large cancel pull-right\">\n            <i class=\"icon-ok\"></i>\n            Anuluj\n          </button>\n          <button class=\"btn btn-primary btn-large save pull-right\">\n            <i class=\"icon-ok icon-white\"></i>\n            Zapisz\n          </button>\n        </div>\n        \n        <button class=\"btn btn-large destroy\">\n          <i class=\"icon-remove\"></i>\n          Usuń\n        </button>\n        \n      </div>\n      \n    </form>\n  </div>\n</section>";
     };
 
     RestaurantMenuItemView.prototype.initialize = function() {
@@ -3650,7 +3650,8 @@
       'click .save': 'save',
       'submit form': 'save',
       'click .destroy': 'destroy',
-      'change .input-image': 'onImageChange'
+      'change .input-image': 'onImageChange',
+      'click .cancel': 'show'
     };
 
     RestaurantMenuItemView.prototype.onSync = function(e) {
@@ -3669,6 +3670,9 @@
     };
 
     RestaurantMenuItemView.prototype.show = function(e) {
+      if (e != null) {
+        e.preventDefault();
+      }
       this.model.meta.editMode = false;
       return this.render();
     };

@@ -2601,14 +2601,21 @@ class RestaurantMenuItemView extends View
   template: -> """
     <section class="menu-item editable">
       <div class="configurable show">
-        <h3>
-          {{#if is_featured}}
-            <i class="icon-star"></i>
-          {{/if}}
-          {{ name }}
-          <small>{{ price }} zł</small>
-        </h3>
-        <p>{{ description }}</p>
+        <div class="row-fluid">
+          <div class="span2">
+            <img src="{{ image_url }}" width="50px" />
+          </div>
+          <div class="span10">
+            <h3>
+              {{#if is_featured}}
+                <i class="icon-star"></i>
+              {{/if}}
+              {{ name }}
+              <small>{{ price }} zł</small>
+            </h3>
+            <p>{{ description }}</p>
+          </div>
+        </div>
       </div>
       <div class="row-fluid edit">
         <form class="span12 item compact-bottom">
@@ -2652,14 +2659,23 @@ class RestaurantMenuItemView extends View
           </div>
           
           <div class="form-actions compact">
-            <button class="btn btn-primary btn-large save pull-right">
-              <i class="icon-ok icon-white"></i>
-              Zapisz
-            </button>
+            
+            <div class="btn-group pull-right">
+              <button class="btn btn-large cancel pull-right">
+                <i class="icon-ok"></i>
+                Anuluj
+              </button>
+              <button class="btn btn-primary btn-large save pull-right">
+                <i class="icon-ok icon-white"></i>
+                Zapisz
+              </button>
+            </div>
+            
             <button class="btn btn-large destroy">
               <i class="icon-remove"></i>
               Usuń
             </button>
+            
           </div>
           
         </form>
@@ -2679,6 +2695,7 @@ class RestaurantMenuItemView extends View
     'submit form': 'save'
     'click .destroy': 'destroy'
     'change .input-image': 'onImageChange'
+    'click .cancel': 'show'
   
   onSync: (e) ->
     console.log 'onSync'
@@ -2693,6 +2710,7 @@ class RestaurantMenuItemView extends View
     @render()
   
   show: (e) =>
+    e?.preventDefault()
     @model.meta.editMode = false
     @render()
   

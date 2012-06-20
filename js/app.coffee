@@ -2662,7 +2662,7 @@ class RestaurantMenuItemView extends View
             
             <div class="btn-group pull-right">
               <button class="btn btn-large cancel pull-right">
-                <i class="icon-ok"></i>
+                <i class="icon-arrow-left"></i>
                 Anuluj
               </button>
               <button class="btn btn-primary btn-large save pull-right">

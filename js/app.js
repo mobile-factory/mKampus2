@@ -2074,9 +2074,10 @@
 
     ElementView.prototype.destroy = function(event) {
       event.preventDefault();
-      return this.model.save({
+      this.model.save({
         is_deleted: true
       });
+      return this.close();
     };
 
     ElementView.prototype.onSync = function() {

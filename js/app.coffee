@@ -1580,6 +1580,7 @@ class ElementView extends View
     # @model.collection?.sort()
     # @model.collection?.remove @model
     @model.save is_deleted: true
+    @close()
     
   
   onSync: ->

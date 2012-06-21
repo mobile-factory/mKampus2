@@ -2873,7 +2873,6 @@
           });
         },
         error: function(event, model) {
-          console.log('restaurant companion object error', event);
           alert('Nie udało się usunąć restaracji. Próbuj ponownie.');
           return error(event, model);
         }
@@ -2891,10 +2890,13 @@
 
     RestaurantUser.prototype.validate = function(attrs) {
       if (attrs.role !== "restaurant") {
-        return "role: restaurant";
+        return "rola powinna być ustawiona na 'restaurant' a jest " + attrs.role;
       }
       if (attrs.username === "new") {
         return "Nazwa new zabroniona";
+      }
+      if (attrs.username === "admin") {
+        return "Nazwa admin zabroniona";
       }
     };
 
@@ -3004,6 +3006,11 @@
       e.preventDefault();
       if (this.model.isNew()) {
         username = this.$('.input-title').val();
+        if (username === "admin" || username === "new") {
+          alert("Nazwa " + username + " jest zastrzeżona. Wybierz inną.");
+          this.$('.input-title').focus();
+          return;
+        }
         if (!username) {
           alert('Musisz podać nazwę restauracji');
           this.$('.input-title').focus();

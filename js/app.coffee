@@ -1984,7 +1984,6 @@ class RestaurantUser extends StackMob.User
       success: =>
         @destroy {success, error}
       error: (event, model) =>
-        console.log 'restaurant companion object error', event
         alert 'Nie udało się usunąć restaracji. Próbuj ponownie.'
         error(event, model)
 
@@ -1996,8 +1995,9 @@ class RestaurantUser extends StackMob.User
     role: "restaurant"
   
   validate: (attrs) ->
-    return "role: restaurant" if attrs.role isnt "restaurant"
+    return "rola powinna być ustawiona na 'restaurant' a jest #{attrs.role}" if attrs.role isnt "restaurant"
     return "Nazwa new zabroniona" if attrs.username is "new"
+    return "Nazwa admin zabroniona" if attrs.username is "admin"
 
 class RestaurantUsers extends LoadableCollection
   model: RestaurantUser
@@ -2089,6 +2089,12 @@ class RestaurantUserShowView extends Backbone.View
     
     if @model.isNew()
       username = @$('.input-title').val()
+      
+      if username is "admin" or username is "new"
+        alert("Nazwa #{username} jest zastrzeżona. Wybierz inną.")
+        @$('.input-title').focus()
+        return
+        
       unless username
         alert('Musisz podać nazwę restauracji')
         @$('.input-title').focus()
@@ -2106,9 +2112,7 @@ class RestaurantUserShowView extends Backbone.View
       alert('Oba hasła muszą być jednakowe')
       @$('.input-password-confirmation').focus()
       return
-    
     @model.set {username, password}
-    
     @trigger 'save', @model, username, password
 
   destroy: (e) =>

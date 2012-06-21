@@ -2797,4 +2797,14 @@ $ ->
     else
       window.app = new App()
       Backbone.history?.start()
-    
+
+######################### Prefetching #########################
+
+m1 = new Image()
+m1.src = '/img/waiting.png'
+m2 = new Image()
+m2.src = '/img/progress.gif'
+m3 = new Image()
+m3.src = '/img/waiting-active.png'
+
+######################### / Prefetching #########################

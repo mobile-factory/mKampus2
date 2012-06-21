@@ -227,6 +227,11 @@ footer {
     margin-right: -10px;
   }
 }
+@media (min-width: 768px) {
+  body {
+    margin-bottom: 50px;
+  }
+}
 .form-actions .btn-toolbar {
   margin-top: 0;
   margin-bottom: 0;
@@ -262,4 +267,10 @@ footer {
   padding-left: 10px;
   min-width: 100px;
   display: inline-block;
+}
+.editable:active .info-label {
+  color: #eee;
+}
+.editable:active a {
+  color: #fff;
 }

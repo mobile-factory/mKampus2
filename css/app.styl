@@ -268,6 +268,9 @@ footer
     margin-left: 10px
     margin-right: -10px
 
+@media (min-width: 768px)
+  body
+    margin-bottom 50px
 
 ///////////////////// FORMS /////////////////////
 
@@ -311,7 +314,7 @@ footer
 .waiting
   background url('/img/waiting.png')
   .configurable, form
-    background url('/img/waiting.png')
+        background url('/img/waiting.png')
   &.active
     background url('/img/waiting-active.png')
 
@@ -330,5 +333,11 @@ footer
   padding-left 10px
   min-width 100px
   display inline-block
+
+.editable:active .info-label
+  color #eee
+
+.editable:active a
+  color #fff
 
 ////////////////// /Informations ///////////////////

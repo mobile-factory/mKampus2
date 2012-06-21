@@ -1244,7 +1244,7 @@ class QuestionView extends Backbone.View
       """ # rate
     '2': -> """
       {{#results}}
-        <div class="span4 item">
+        <div class="span8 item">
           <label class="radio">
             <input type="radio" disabled="disabled" />
             {{ name }}
@@ -1255,7 +1255,7 @@ class QuestionView extends Backbone.View
       """ # radio
     '3': -> """
       {{#results}}
-        <div class="span4 item">
+        <div class="span8 item">
           <label class="checkbox">
             <input type="checkbox" disabled="disabled" />
             {{ name }}

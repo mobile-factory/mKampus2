@@ -1589,10 +1589,10 @@
         return "{{#results}}\n  <div class=\"span8 item\">\n    <div class=\"row-fluid\">\n      <div class=\"span10\">\n        <div class=\"progress\">\n          <div class=\"bar\" style=\"width: {{ this }}%;\"></div>\n        </div>\n      </div>\n      <div class=\"span2\">\n        <span class=\"badge\">{{ this }} %</span>\n      </div>\n    </div>\n  </div>\n{{/results}}";
       },
       '2': function() {
-        return "{{#results}}\n  <div class=\"span4 item\">\n    <label class=\"radio\">\n      <input type=\"radio\" disabled=\"disabled\" />\n      {{ name }}\n      <span class=\"badge\">{{ votes }}</span>\n    </label>\n  </div>\n{{/results}}";
+        return "{{#results}}\n  <div class=\"span8 item\">\n    <label class=\"radio\">\n      <input type=\"radio\" disabled=\"disabled\" />\n      {{ name }}\n      <span class=\"badge\">{{ votes }}</span>\n    </label>\n  </div>\n{{/results}}";
       },
       '3': function() {
-        return "{{#results}}\n  <div class=\"span4 item\">\n    <label class=\"checkbox\">\n      <input type=\"checkbox\" disabled=\"disabled\" />\n      {{ name }}\n      <span class=\"badge\">{{ votes }}</span>\n    </label>\n  </div>\n{{/results}}";
+        return "{{#results}}\n  <div class=\"span8 item\">\n    <label class=\"checkbox\">\n      <input type=\"checkbox\" disabled=\"disabled\" />\n      {{ name }}\n      <span class=\"badge\">{{ votes }}</span>\n    </label>\n  </div>\n{{/results}}";
       },
       '4': function() {
         return "{{#results}}\n  <div class=\"span8 item\">\n    {{ this }}\n  </div>\n{{/results}}";

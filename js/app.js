@@ -247,7 +247,6 @@
 
     ModelWithImage.prototype.initialize = function() {
       ModelWithImage.__super__.initialize.apply(this, arguments);
-      console.log('initialize of ModelWith Image', this);
       return this.on('sync', this.updateImageModel);
     };
 
@@ -257,7 +256,6 @@
 
     ModelWithImage.prototype.updateImageModel = function() {
       var image;
-      console.log('sync -> updateImageModel', this);
       image = new Image({
         image_id: this.get('image'),
         width: this.get('image_width'),
@@ -967,17 +965,20 @@
         content: content
       }, {
         success: function() {
-          return _this.collection.create({
-            content: content
-          }, {
-            wait: true,
-            success: function() {
-              return _this.reset();
-            },
-            failure: function() {
-              alert('Powiadomienie wysłano, ale nastąpił problem z bazą danych w wyniku czego nie pojawi się na liście. Przepraszamy.');
-              return _this.reset();
-            }
+          return $.when(_this.collection).then(function(collection) {
+            console.log('collection', collection);
+            return collection.create({
+              content: content
+            }, {
+              wait: true,
+              success: function() {
+                return _this.reset();
+              },
+              failure: function() {
+                alert('Powiadomienie wysłano, ale nastąpił problem z bazą danych w wyniku czego nie pojawi się na liście. Przepraszamy.');
+                return _this.reset();
+              }
+            });
           });
         },
         error: function() {

@@ -196,14 +196,14 @@ class ModelWithImage extends Model
 
   initialize: ->
     super
-    console.log 'initialize of ModelWith Image', @
+    # console.log 'initialize of ModelWith Image', @
     @on 'sync', @updateImageModel
     
   getImageId: ->
     "#{@constructor.name}_#{@id}"
 
   updateImageModel: =>
-    console.log 'sync -> updateImageModel', @
+    # console.log 'sync -> updateImageModel', @
     image = new Image
       image_id: @get('image')
       width: @get('image_width')
@@ -726,7 +726,9 @@ class NotificationsView extends CollectionView
       , {content}
       , success: =>
         # console.log 'broadcast sent'
-        @collection.create {content}, wait: true
+        $.when(@collection).then (collection) =>
+          console.log 'collection', collection
+          collection.create {content}, wait: true
           , success: =>
             @reset()
           , failure: =>

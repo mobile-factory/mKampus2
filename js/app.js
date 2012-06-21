@@ -181,17 +181,22 @@
     }
 
     Model.prototype.initialize = function() {
-      var _this = this;
       this.meta = {
         waiting: false
       };
-      this.on('sync', function() {
-        return _this.meta.waiting = false;
-      });
-      this.on('error', function() {
-        return _this.meta.waiting = false;
-      });
+      this.on('sync', this.ready, this);
+      this.on('error', this.ready, this);
       return Model.__super__.initialize.apply(this, arguments);
+    };
+
+    Model.prototype.wait = function() {
+      this.meta.waiting = true;
+      return this.trigger('wait');
+    };
+
+    Model.prototype.ready = function() {
+      this.meta.waiting = false;
+      return this.trigger('ready');
     };
 
     Model.prototype.isWaiting = function() {
@@ -200,7 +205,7 @@
 
     Model.prototype.save = function() {
       Model.__super__.save.apply(this, arguments);
-      return this.meta.waiting = true;
+      return this.wait();
     };
 
     return Model;
@@ -1035,9 +1040,11 @@
     Survey.prototype.saveQuestions = function() {
       var _this = this;
       return this.questions.each(function(model) {
-        return model.save({
+        console.log('question to save', model.toJSON(), model);
+        model.set({
           survey: _this.id
         });
+        return model.save();
       });
     };
 
@@ -1085,7 +1092,7 @@
 
     return Surveys;
 
-  })(LoadableCollection);
+  })(SortableCollection);
 
   Answer = (function(_super) {
 
@@ -1286,7 +1293,7 @@
 
     return Questions;
 
-  })(Collection);
+  })(SortableCollection);
 
   SurveyView = (function(_super) {
 
@@ -1795,10 +1802,14 @@
     };
 
     SurveyEditView.prototype.createQuestion = function() {
-      var question,
-        _this = this;
-      question = new Question();
+      var _this = this;
       return $.when(this.collection).then(function(collection) {
+        var position, question;
+        position = collection.newPosition();
+        console.log('new position for question', position);
+        question = new Question({
+          position: position
+        });
         collection.add(question);
         return collection.trigger('edit', question);
       });
@@ -2767,7 +2778,7 @@
     PlaceShowView.prototype.titlePlaceholder = 'Nazwa nowego miejsca';
 
     PlaceShowView.prototype.template = function() {
-      return "<div id=\"title-section\">\n  <div class=\"add-section\">\n    <form id=\"title-edit\" action=\"\">\n      <input type=\"text\" class=\"input-title add edit\" placeholder=\"" + this.titlePlaceholder + "\" autofocus=\"autofocus\" value=\"{{ " + this.labelAttribute + " }}\"/>\n    </form>\n  </div>\n</div>\n\n<div id=\"elements\">\n</div>\n\n<section class=\"item\">\n  <form action=\"#\" class=\"form-horizontal\">\n    <div class=\"row-fluid\">\n      <div class=\"span12\">\n        <div class=\"control-group\">\n          <label for=\"\" class=\"control-label\">Opis</label>\n          <div class=\"controls\"><textarea class=\"span12 input-description\">{{ description }}</textarea></div>\n        </div>\n        <div class=\"control-group\">\n          <label for=\"\" class=\"control-label\">Szerokość geograficzna</label>\n          <div class=\"controls\"><input type=\"text\" class=\"span6 input-latitude\" value=\"{{ latitude }}\" placeholder=\"51.110195\"/></div>\n        </div>\n        <div class=\"control-group\">\n          <label for=\"\" class=\"control-label\">Długość geograficzna</label>\n          <div class=\"controls\"><input type=\"text\" class=\"span6 input-longitude\" value=\"{{ longitude }}\" placeholder=\"17.031404\"/></div>\n        </div>\n      </div>\n    </div>\n    \n  </form>\n</section>\n\n\n<div id=\"elements\"></div>\n  \n<div class=\"form-actions section\">\n  \n  <button class=\"destroy btn btn-large\">\n    <i class=\"icon-remove\"></i>\n    Usuń\n  </button>\n  \n  <button class=\"save btn btn-large btn-primary pull-right\">\n    <i class=\"icon-ok icon-white\"></i>\n    Zapisz\n  </button>\n</div>";
+      return "<div id=\"title-section\">\n  <div class=\"add-section\">\n    <form id=\"title-edit\" action=\"\">\n      <input type=\"text\" class=\"input-title add edit\" placeholder=\"" + this.titlePlaceholder + "\" autofocus=\"autofocus\" value=\"{{ " + this.labelAttribute + " }}\"/>\n    </form>\n  </div>\n</div>\n\n<div id=\"elements\">\n</div>\n\n<section class=\"item\">\n  <form action=\"#\" class=\"form-horizontal\">\n    <div class=\"row-fluid\">\n      <div class=\"span12\">\n        <div class=\"control-group\">\n          <label for=\"\" class=\"control-label\">Opis</label>\n          <div class=\"controls\"><textarea class=\"span12 input-description\">{{ description }}</textarea></div>\n        </div>\n        <div class=\"control-group\">\n          <label for=\"\" class=\"control-label\">Szerokość geograficzna</label>\n          <div class=\"controls\"><input type=\"text\" class=\"span6 input-latitude\" value=\"{{ latitude }}\" placeholder=\"51.110195\"/></div>\n        </div>\n        <div class=\"control-group\">\n          <label for=\"\" class=\"control-label\">Długość geograficzna</label>\n          <div class=\"controls\"><input type=\"text\" class=\"span6 input-longitude\" value=\"{{ longitude }}\" placeholder=\"17.031404\"/></div>\n        </div>\n      </div>\n    </div>\n    \n  </form>\n</section>\n\n<div id=\"elements\"></div>\n  \n<div class=\"form-actions section\">\n  \n  <button class=\"destroy btn btn-large\">\n    <i class=\"icon-remove\"></i>\n    Usuń\n  </button>\n  \n  <button class=\"save btn btn-large btn-primary pull-right\">\n    <i class=\"icon-ok icon-white\"></i>\n    Zapisz\n  </button>\n</div>";
     };
 
     PlaceShowView.prototype.events = {
@@ -2832,12 +2843,43 @@
       this.on('error', function() {
         return _this.meta.waiting = false;
       });
+      this.on('destroy', function() {
+        if (_this.collection) {
+          return _this.collection.remove(_this);
+        }
+      });
       return RestaurantUser.__super__.initialize.apply(this, arguments);
     };
 
     RestaurantUser.prototype.isWaiting = function() {
       this.meta.waiting;
       return false;
+    };
+
+    RestaurantUser.prototype.destroyWithDependencies = function(options) {
+      var companionRestaurant, error, success,
+        _this = this;
+      options = _.extend({
+        success: (function() {}),
+        error: (function() {})
+      }, options);
+      success = options.success, error = options.error;
+      companionRestaurant = new Restaurant({
+        restaurant_id: this.id
+      });
+      return companionRestaurant.destroyWithDependencies({
+        success: function() {
+          return _this.destroy({
+            success: success,
+            error: error
+          });
+        },
+        error: function(event, model) {
+          console.log('restaurant companion object error', event);
+          alert('Nie udało się usunąć restaracji. Próbuj ponownie.');
+          return error(event, model);
+        }
+      });
     };
 
     RestaurantUser.prototype.save = function() {
@@ -2903,13 +2945,9 @@
     };
 
     RestaurantUserView.prototype.initialize = function() {
-      var _this = this;
       RestaurantUserView.__super__.initialize.apply(this, arguments);
       this.model.on('sync', this.render, this);
-      this.model.on('change', this.render, this);
-      return this.model.on('all', function(event) {
-        return console.log('event', event);
-      });
+      return this.model.on('change', this.render, this);
     };
 
     return RestaurantUserView;
@@ -2951,7 +2989,12 @@
       this.user = _arg.user;
       RestaurantUserShowView.__super__.initialize.apply(this, arguments);
       this.model.on('change', this.render);
-      return this.model.on('reset', this.render);
+      this.model.on('reset', this.render);
+      return this.model.on('destroy', this.onDestroy, this);
+    };
+
+    RestaurantUserShowView.prototype.onDestroy = function() {
+      return this.trigger('destroy', this.model);
     };
 
     RestaurantUserShowView.prototype.updateName = function(e) {
@@ -2992,7 +3035,7 @@
 
     RestaurantUserShowView.prototype.destroy = function(e) {
       e.preventDefault();
-      return this.trigger('destroy', this.model);
+      return this.model.destroyWithDependencies();
     };
 
     RestaurantUserShowView.prototype.render = function() {
@@ -3398,7 +3441,6 @@
           return collection.create(model);
         });
         mainView.on('destroy', function(model) {
-          model.destroy();
           return _this.navigate(path, true);
         });
         model.on('sync', function() {
@@ -3425,18 +3467,8 @@
               });
             });
             mainView.on('destroy', function(model) {
-              model.destroy();
               _this.navigate(path, true);
-              return $.when(_this.Restaurants.load()).then(function(restaurants) {
-                var restaurant;
-                if (restaurant = restaurants.find(function(r) {
-                  return r.get('name') === model.id;
-                })) {
-                  return restaurant.save({
-                    is_deleted: true
-                  });
-                }
-              });
+              return console.log('mainView.on destroy', model, _this.RestaurantUsers);
             });
             view = new SidebarLayout({
               title: title,
@@ -3508,6 +3540,25 @@
     }
 
     Restaurant.prototype.schemaName = 'restaurant';
+
+    Restaurant.prototype.destroyWithDependencies = function(options) {
+      var error, success,
+        _this = this;
+      options || (options = {});
+      options.success || (options.success = function() {});
+      options.error || (options.error = function() {});
+      success = options.success, error = options.error;
+      this.set({
+        is_deleted: true
+      });
+      return this.save({}, {
+        success: function() {
+          success(_this);
+          return _this.trigger('destroy');
+        },
+        error: error
+      });
+    };
 
     return Restaurant;
 
@@ -3825,7 +3876,7 @@
       });
     };
     bazylia = false;
-    auth = true;
+    auth = false;
     if (bazylia) {
       window.globals.current_user = "Bazylia";
       return displayRestaurantPanelById('Bazylia', new User({

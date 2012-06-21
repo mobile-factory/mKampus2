@@ -170,16 +170,24 @@ class Model extends StackMob.Model
   initialize: ->
     @meta =
       waiting: false
-    @on 'sync', => @meta.waiting = false
-    @on 'error', => @meta.waiting = false
+    @on 'sync', @ready, @
+    @on 'error', @ready, @
     super
+  
+  wait: ->
+    @meta.waiting = true
+    @trigger 'wait'
+  
+  ready: ->
+    @meta.waiting = false
+    @trigger 'ready'
   
   isWaiting: ->
     @meta.waiting
   
   save: ->
     super
-    @meta.waiting = true
+    @wait()
 
 class Image extends Model
   schemaName: 'image'
@@ -761,7 +769,10 @@ class Survey extends Model
   
   saveQuestions: =>
     @questions.each (model) =>
-      model.save {survey: @id}
+      console.log 'question to save', model.toJSON(), model
+      model.set survey: @id
+        # position: model.get('position')
+      model.save()
       
   getQuestions: ->
     unless @fetchQuestionsPromise?
@@ -777,7 +788,7 @@ class Survey extends Model
     @fetchQuestionsPromise
     
 
-class Surveys extends LoadableCollection
+class Surveys extends SortableCollection
   model: Survey
   
   isDeletable: false
@@ -938,7 +949,7 @@ class Question extends Model
         "[]"
       
 
-class Questions extends Collection
+class Questions extends SortableCollection
   model: Question
   
   types:
@@ -1444,8 +1455,11 @@ class SurveyEditView extends CollectionView
       app.navigate '/surveys', true
     
   createQuestion: =>
-    question = new Question()
+    #kot
     $.when(@collection).then (collection) =>
+      position = collection.newPosition()
+      console.log 'new position for question', position
+      question = new Question({position})
       collection.add question
       collection.trigger 'edit', question
   
@@ -2053,7 +2067,6 @@ class PlaceShowView extends Backbone.View
       </form>
     </section>
     
-    
     <div id="elements"></div>
       
     <div class="form-actions section">
@@ -2105,16 +2118,44 @@ class PlaceShowView extends Backbone.View
 class RestaurantUser extends StackMob.User
   
   initialize: ->
-    @meta =
-      waiting: false
+    @meta = {waiting: false}
     @on 'sync', => @meta.waiting = false
     @on 'error', => @meta.waiting = false
+    @on 'destroy', =>
+      if @collection
+        @collection.remove @
     super
   
   isWaiting: ->
     @meta.waiting
     false
   
+  # destroyMe: (options) ->
+  #   options = _.extend {success: (->), error: (->)}, options
+  #   {success, error} = options
+  #   @set({is_deleted: true})
+  #   @save {}
+  #   , success: =>
+  #     success(@)
+  #     @trigger 'destroy'
+  #     @meta.waiting = false
+  #   , error: (event, model) =>
+  #     @meta.waiting = false
+  #     alert 'Nie udało się usunąć użytkownika restaracji. Próbuj ponownie.'
+  #     error(event, model)
+  
+  destroyWithDependencies: (options) ->
+    options = _.extend {success: (->), error: (->)}, options
+    {success, error} = options
+    companionRestaurant = new Restaurant({restaurant_id: @id})
+    companionRestaurant.destroyWithDependencies
+      success: =>
+        @destroy {success, error}
+      error: (event, model) =>
+        console.log 'restaurant companion object error', event
+        alert 'Nie udało się usunąć restaracji. Próbuj ponownie.'
+        error(event, model)
+
   save: ->
     super
     @meta.waiting = true
@@ -2144,7 +2185,7 @@ class RestaurantUserView extends SelectableView
     super
     @model.on 'sync', @render, @
     @model.on 'change', @render, @
-    @model.on 'all', (event) => console.log 'event', event
+    # @model.on 'all', (event) => console.log 'event', event
 
 class RestaurantUserShowView extends Backbone.View
   labelAttribute: 'username'
@@ -2205,7 +2246,10 @@ class RestaurantUserShowView extends Backbone.View
     super
     @model.on 'change', @render
     @model.on 'reset', @render
-    
+    @model.on 'destroy', @onDestroy, @
+  
+  onDestroy: ->
+    @trigger 'destroy', @model
   
   updateName: (e) =>
     @$('.input-username').val(@$('.input-title').val())  
@@ -2244,7 +2288,8 @@ class RestaurantUserShowView extends Backbone.View
 
   destroy: (e) =>
     e.preventDefault()
-    @trigger 'destroy', @model
+    @model.destroyWithDependencies()
+    # @trigger 'destroy', @model
   
   render: =>
     @$el.html @template().render @model.toJSON()
@@ -2485,7 +2530,7 @@ class App extends Backbone.Router
         collection.create model
       mainView.on 'destroy', (model) =>
         #TODO delete restaurant as well
-        model.destroy()
+        # model.destroy()
         @navigate path, true
       model.on 'sync', =>
         @navigate "#{path}/#{model.id.toURL()}", true
@@ -2499,15 +2544,15 @@ class App extends Backbone.Router
               collection.create {username, password}, success: =>
                 # console.log 'after creation'
                 @navigate "#{path}/#{model.id.toURL()}", true
-              
           mainView.on 'destroy', (model) =>
             # collection.remove model
-            model.destroy()
+            # model.destroy()
             @navigate path, true
+            console.log 'mainView.on destroy', model, @RestaurantUsers
             #TODO usunięcie restauracji
-            $.when(@Restaurants.load()).then (restaurants) =>
-              if restaurant = restaurants.find((r) -> r.get('name') is model.id)
-                restaurant.save({is_deleted: true})
+            # $.when(@RestaurantUser.load()).then (restaurants) =>
+            #               if restaurant = restaurants.find((r) -> r.get('name') is model.id)
+            #                 restaurant.save({is_deleted: true})
             
           view = new SidebarLayout({title, backLink: "##{path}", mainView, listView})
           @setView view
@@ -2546,10 +2591,17 @@ class App extends Backbone.Router
 class Restaurant extends ModelWithImage
   schemaName: 'restaurant'
   
-  # defaults:
-  #   image_url: '/img/restaurant.png'
-  #   image_width: 122
-  #   image_height: 124
+  destroyWithDependencies: (options) ->
+    options or= {}
+    options.success or= ->
+    options.error or= ->
+    {success, error} = options
+    @set is_deleted: true
+    @save {}
+    , success: =>
+      success(@)
+      @trigger 'destroy'
+    , error: error
 
 class Restaurants extends LoadableCollection
   model: Restaurant
@@ -2918,7 +2970,7 @@ $ ->
             $('body').html view.render().el
   
   bazylia = off
-  auth = on
+  auth = off
   
   if bazylia
     window.globals.current_user = "Bazylia"

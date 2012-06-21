@@ -3876,7 +3876,7 @@
       });
     };
     bazylia = false;
-    auth = false;
+    auth = true;
     if (bazylia) {
       window.globals.current_user = "Bazylia";
       return displayRestaurantPanelById('Bazylia', new User({

@@ -2970,7 +2970,7 @@ $ ->
             $('body').html view.render().el
   
   bazylia = off
-  auth = off
+  auth = on
   
   if bazylia
     window.globals.current_user = "Bazylia"

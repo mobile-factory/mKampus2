@@ -891,9 +891,8 @@ class Question extends Model
             0
           else
             sum = _(contents).reduce(((memo, element) -> memo + Number(element)-1), 0)
-            Math.round((sum / contents.length)*25)
-          # console.log 'rate', avg, @get('content')
-          avg * 20
+            sum / contents.length
+          Math.round(avg*25)
         when '4' #text
           # console.log 'text', contents, @get('content')
           # console.log 'text contents', contents

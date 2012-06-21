@@ -1192,8 +1192,8 @@
             case '1':
               avg = contents.length === 0 ? 0 : (sum = _(contents).reduce((function(memo, element) {
                 return memo + Number(element) - 1;
-              }), 0), Math.round((sum / contents.length) * 25));
-              return avg * 20;
+              }), 0), sum / contents.length);
+              return Math.round(avg * 25);
             case '4':
               return contents;
             case '3':

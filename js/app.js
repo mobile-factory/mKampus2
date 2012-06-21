@@ -3726,8 +3726,7 @@
     RestaurantMenuItemView.prototype.initialize = function() {
       RestaurantMenuItemView.__super__.initialize.apply(this, arguments);
       this.model.on('sync', this.onSync, this);
-      this.model.on('error', this.onError, this);
-      return console.log('RestaurantMenuItemView initialized');
+      return this.model.on('error', this.onError, this);
     };
 
     RestaurantMenuItemView.prototype.events = {
@@ -3740,13 +3739,20 @@
     };
 
     RestaurantMenuItemView.prototype.onSync = function(e) {
-      console.log('onSync');
       return this.show();
     };
 
     RestaurantMenuItemView.prototype.onError = function(e) {
+      var _this = this;
       alert('Aktualizacja nie powiodła się, spróbuj ponownie później');
-      return this.show();
+      this.model.wait();
+      this.show();
+      return this.model.fetch({
+        success: function() {
+          _this.model.ready();
+          return _this.render();
+        }
+      });
     };
 
     RestaurantMenuItemView.prototype.edit = function(e) {
@@ -3797,7 +3803,7 @@
     };
 
     RestaurantMenuItemView.prototype.render = function() {
-      this.$el.html(this.template().render(this.model.toJSON()));
+      this.$el.html(this.template().render(this.model.templateData()));
       this.$('section').toggleClass('waiting', this.model.meta.waiting);
       if (this.model.meta.editMode || !this.model.get('name')) {
         this.$('section').addClass('active');
@@ -3839,8 +3845,24 @@
     RestaurantView.prototype.initialize = function() {
       this.model.on('reset', this.render);
       this.model.on('sync', this.render);
-      window.model = this.model;
+      this.model.on('error', this.onError, this);
       return RestaurantView.__super__.initialize.apply(this, arguments);
+    };
+
+    RestaurantView.prototype.onError = function() {
+      var _this = this;
+      if (this.model.meta.errorOccured !== true) {
+        this.model.meta.errorOccured = true;
+        this.model.wait();
+        this.model.fetch({
+          success: function() {
+            _this.model.ready();
+            _this.render();
+            return _this.model.meta.errorOccured = false;
+          }
+        });
+        return alert('Nie udało się wprowadzić tej zmiany. Spróbuj ponownie później.');
+      }
     };
 
     RestaurantView.prototype.events = {

@@ -196,6 +196,9 @@ class ModelWithImage extends Model
   initialize: ->
     super
     @on 'sync', @updateImageModel
+  
+  # rollbackImage: ->
+  #   @set image_url: @get('image_content')
     
   getImageId: ->
     "#{@constructor.name}_#{@id}"
@@ -2556,7 +2559,8 @@ class RestaurantMenuItemView extends View
     super
     @model.on 'sync', @onSync, @
     @model.on 'error', @onError, @
-    console.log 'RestaurantMenuItemView initialized'
+    # @model.on 'reset', @render, @
+    # @model.on 'all', (event) -> console.log 'event', event
   
   events:
     'click .show': 'edit'
@@ -2567,12 +2571,16 @@ class RestaurantMenuItemView extends View
     'click .cancel': 'show'
   
   onSync: (e) ->
-    console.log 'onSync'
     @show()
   
   onError: (e) ->
     alert('Aktualizacja nie powiodła się, spróbuj ponownie później')
+    @model.wait()
     @show()
+    @model.fetch
+      success: =>
+        @model.ready()
+        @render()
     
   edit: (e) =>
     @model.meta.editMode = true
@@ -2584,7 +2592,6 @@ class RestaurantMenuItemView extends View
     @render()
   
   save: (e) =>
-    # console.log 'save'
     e.preventDefault()
     e.stopPropagation()
     
@@ -2615,7 +2622,7 @@ class RestaurantMenuItemView extends View
     @collection.remove @model
   
   render: =>
-    @$el.html @template().render @model.toJSON()
+    @$el.html @template().render @model.templateData()
     @$('section').toggleClass('waiting', @model.meta.waiting)
     if @model.meta.editMode or not @model.get('name')
       @$('section').addClass('active')
@@ -2728,8 +2735,20 @@ class RestaurantView extends CollectionView
   initialize: ->
     @model.on 'reset', @render
     @model.on 'sync', @render
-    window.model = @model
+    @model.on 'error', @onError, @
+    # window.model = @model
     super
+    
+  onError: ->
+    unless @model.meta.errorOccured is true
+      @model.meta.errorOccured = true
+      @model.wait()
+      @model.fetch
+        success: =>
+          @model.ready()
+          @render()
+          @model.meta.errorOccured = false
+      alert('Nie udało się wprowadzić tej zmiany. Spróbuj ponownie później.')
     
   events:
     'click .save': 'save'

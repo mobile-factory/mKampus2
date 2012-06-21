@@ -129,7 +129,6 @@ helper header: (title, options) ->
   </header>
   """.render {title, add_section: options.fn(@)}
 
-
 helper items: (id) ->
   """
   <div class="container">
@@ -196,14 +195,12 @@ class ModelWithImage extends Model
 
   initialize: ->
     super
-    # console.log 'initialize of ModelWith Image', @
     @on 'sync', @updateImageModel
     
   getImageId: ->
     "#{@constructor.name}_#{@id}"
 
   updateImageModel: =>
-    # console.log 'sync -> updateImageModel', @
     image = new Image
       image_id: @get('image')
       width: @get('image_width')
@@ -219,11 +216,9 @@ class ModelWithImage extends Model
   
   getImageURL: ->
     if img = @get('image_url')
-      # console.log 'ModelWithImage.getImageURL()', img
       imageData = img.split("\n")
       if imageData.length is 5
         type = imageData[0].split(" ")[1]
-        # console.log 'image type', type
         content = imageData[4]
         "data:#{type};base64,#{content}"
       else
@@ -258,9 +253,6 @@ class ModelWithImage extends Model
 class Collection extends StackMob.Collection
 
 class Group extends Model
-  # saveInformations: =>
-  #   @informations.each (model) =>
-  #     model.save {survey: @id}
 
   getElements: ->
     unless @fetchElementsPromise?
@@ -320,8 +312,6 @@ class View extends Backbone.View
   getImagePreview: -> @$('.image-preview')
   
   onImageChange: (e) ->
-    console.log 'on image change'
-    console.log 'image_preview', @getImagePreview()
     
     e.stopPropagation()
     e.preventDefault()
@@ -329,15 +319,10 @@ class View extends Backbone.View
     reader = new FileReader()
     reader.onload = (e) =>
       $image = @getImagePreview()
-      
-      # console.log '.image-preview', $image
-      # console.log 'image', e.target.result
-      
       $image.attr('src', e.target.result)
       setTimeout =>
         width = $image[0].clientWidth
         height = $image[0].clientHeight
-        console.log 'WH after', width, height
         @model.set {image_width: width, image_height: height}
         base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length)
         fileName = file.name
@@ -351,37 +336,27 @@ class CollectionView extends View
   
   waitForCollection: ->
     if @$collection
-      # console.log 'wait'
       @$collection.html """<section class="item loading"><img src="/img/progress.gif"/></section>"""
   
   initialize: ->
     super
-    # console.log 'CollectionView initialized'
     @waitForCollection()
     
     @itemView or= @options.itemView
     $.when(@collection).then (collection) =>
-      # console.log 'collection', collection
       collection.on 'reset', @addAll
       collection.on 'add', @addAll
       collection.on 'remove', @addAll
 
   addAll: =>
     $collection = @$collection or @$el
-    # console.log '$collection', $collection
     $.when(@collection).then (collection) =>
-      # collection.sort()
-      # console.log 'CollectionView addAll from collection', collection, collection.length, @itemView
-      # if collection.length > 0
       $collection.empty()
-      # console.log 'empty'
       collection.each @addOne
 
   addOne: (model) =>
-    # console.log 'add', model
     options = _.extend(_.clone(@options), {model, @collection})
     view = new @itemView options
-    # console.log 'view', view
     if @$collection?
       @$collection.append view.render().el
       # if @options.prepend?
@@ -391,7 +366,6 @@ class CollectionView extends View
       #   @$collection.append view.render().el
 
   render: ->
-    # console.log 'CollectionView rendered', @
     @$collection or= @$el
     @waitForCollection()
     @addAll()
@@ -417,7 +391,7 @@ class AddView extends Backbone.View
     @$el.html @template.render {placeholder: @getPlaceholder()}
     @
 
-class MenuLayout extends Backbone.View # title, addView, listView
+class MenuLayout extends Backbone.View
   
   template: """
     {{#layout}}
@@ -459,7 +433,6 @@ class MenuLayout extends Backbone.View # title, addView, listView
     
     addView.render()
     listView.render()
-    # $list.html listView.render().el 
     @
 
 class SidebarLayout extends Backbone.View
@@ -543,12 +516,6 @@ class SelectableView extends View
   
   render: =>
     @$el.html @template().render _.extend(@model.toJSON(), {id: @getID(), isWaiting: @model.isWaiting()})    
-    # if @model.hasChanged()
-    #   # console.log 'waiting', @model.get 'name'
-    #   @$el.addClass('waiting')
-    # else
-    #   # console.log 'not waiting', @model.get 'name'
-    #   @$el.removeClass('waiting')
     @$el.toggleClass('waiting', @model.isWaiting())
     window.app.updateLinks()
     @    
@@ -595,16 +562,11 @@ class LoginView extends Backbone.View
     submit: 'submit'
 
   submit: (e) =>
-    # console.log "submited"
     e.preventDefault()
     $('#login-button').button('toggle')
     user = new User({username: @$('#login-input').val(), password: @$('#password-input').val()})
-    # console.log "LOGIN user", user
     user.login false,
       success: (u) =>
-        # $('#login-button').button('toggle')
-        # console.log 'logged in user', user
-        # console.log 'StackMob.getLoggedInUser()', StackMob.getLoggedInUser()
         @trigger 'login', user
       error: (u, e) =>
         @$('.control-group').addClass('error')
@@ -721,11 +683,9 @@ class NotificationsView extends CollectionView
     content = @$input.val()
     return if content.length < 0 or content.length > Notification.maxLength
     @$submit.button('loading')
-    # console.log 'StackMob.getLoggedInUser()', StackMob.getLoggedInUser()
     StackMob.customcode 'broadcast'
       , {content}
       , success: =>
-        # console.log 'broadcast sent'
         $.when(@collection).then (collection) =>
           console.log 'collection', collection
           collection.create {content}, wait: true
@@ -759,21 +719,18 @@ class Survey extends Model
     title: ''
   
   validate: ({title}) ->
-    # console.log 'survey validation, title:', title
     if title.length < 1
       return "Ankieta musi mieć tytuł"
     null
   
   initialize: ->
     super
-    # @on 'show', => @getQuestions()
     @on 'sync', @saveQuestions
   
   saveQuestions: =>
     @questions.each (model) =>
       console.log 'question to save', model.toJSON(), model
       model.set survey: @id
-        # position: model.get('position')
       model.save()
       
   getQuestions: ->
@@ -816,42 +773,6 @@ class Answers extends Collection
       catch error
         content
     )).reject (element) -> _(element).isNull()
-
-
-# class RadioAnswers extends Answers
-#   
-#   toJSON: ->
-#     results = {}
-#     _(@getContents()).each (id) ->
-#       results[id] or= 0
-#       results[id] += 1
-#     results
-# 
-# 
-# class CheckboxAnswers extends Answers
-#   
-#   toJSON: ->
-#     results = {}
-#     _(@getContents()).each (array) ->
-#       _(array).each (id) ->
-#         results[id] or= 0
-#         results[id] += 1
-#     results
-# 
-# 
-# class TextAnswers extends Answers
-#   
-#   toJSON: ->
-#     @getContents()
-# 
-# 
-# class RateAnswers extends Answers
-#   
-#   toJSON: ->
-#     contents = @getContents()
-#     sum = _(contents).reduce(((memo, element) -> memo + element), 0)
-#     sum / contents.length
-
   
 class Question extends Model
   schemaName: 'question'
@@ -860,14 +781,6 @@ class Question extends Model
     type: '1'
     content: ''
     answers: ''
-  
-  # Answers: ->
-  #   switch @get('type')
-  #     when '1' then new RateAnswers()
-  #     when '2' then new CheckboxAnswers()
-  #     when '3' then new TextAnswers()
-  #     when '4' then new RadioAnswers()
-  #     else new Answers()
 
   getUserAnswers: ->
     unless @fetchAnswersPromise?
@@ -885,7 +798,6 @@ class Question extends Model
   getResults: ->
     promise = $.Deferred()
     $.when(@getUserAnswers()).then (userAnswers) =>
-      # console.log 'Question.getUserAnswers() ->', answers.getContents(), @get('content')
       contents = userAnswers.getContents()
       promise.resolve switch @get('type')
         when '1' #rate
@@ -896,13 +808,9 @@ class Question extends Model
             sum / contents.length
           Math.round(avg*25)
         when '4' #text
-          # console.log 'text', contents, @get('content')
-          # console.log 'text contents', contents
           contents
-          
         when '3' # 'checkbox'
           results = {}
-          # console.log '@getAnswerNames()', @getAnswerNames(), @
           _(@getAnswerNames()).each (name, index) ->
             results[index] = {name, votes: 0}
           _(contents).each (content) ->
@@ -910,12 +818,10 @@ class Question extends Model
               if results[index]
                 results[index].votes += 1
           array = _(results).map (element) -> element
-          # console.log 'checkbox/radio', array, @get('content')
           array
           
         when '2' # 'radio'
           results = {}
-          # console.log '@getAnswerNames()', @getAnswerNames(), @
           
           _(@getAnswerNames()).each (name, index) ->
             results[index] = {name, votes: 0}
@@ -923,9 +829,7 @@ class Question extends Model
           _(contents).each (index) ->
             if results[index]
               results[index].votes += 1
-          # console.log 'kot3', results
           array = _(results).map (element) -> element
-          # console.log 'checkbox/radio', array, @get('content')
           array
         else
           null
@@ -958,19 +862,6 @@ class Questions extends SortableCollection
     2: 'checkbox'
     3: 'text'
     4: 'radio'
-      
-  
-  # initialize: ->
-  #   super
-  #   @on 'publish', @onPublish
-  #   @savePromises = {}
-  # 
-  # onPublish: (survey) =>
-  #   @each (question) =>
-  #     unless @savePromises[question]?
-  #       @savePromises[question] = promise = $.Deferred()
-  #       question.save {survey: survey.id}, success: (model) =>
-  #         promise.resolve model
       
 class SurveyView extends Backbone.View
   
@@ -1011,15 +902,6 @@ class SurveyView extends Backbone.View
     $.when(@collection).then (collection) =>
       active = collection.active and ((@model.id and collection.active.id is @model.id) or (collection.active.cid is @model.cid))
       @$el.html @template.render _.extend(@model.toJSON(), {active})
-      # console.log 'render survey view', collection.active
-    # if @collection.active
-    #       if (@model.id and @collection.active.id is @model.id) or (@collection.active.cid is @model.cid)
-    #         @$('.survey').addClass 'active'
-    #       else
-    #         @$('.survey').removeClass 'active'
-    # 
-    # @$('.survey').toggleClass 'active', @collection.active is @model
-    # if @collection.active is @model
     @
 
 class QuestionEditView extends Backbone.View
@@ -1099,17 +981,13 @@ class QuestionEditView extends Backbone.View
     @model.on 'destroy', @onDestroy
   
   onEdit: (model) =>
-    # console.log 'onEdit'
     if model is @model
       @open()
     else
-      # console.log 'edit another question'
       @persist()
       if @model.get('content').length > 0
-        # console.log 'has content -> save'
         @save()
       else
-        # console.log 'no content -> destroy'
         @model.destroy()
   
   onDestroy: =>
@@ -1117,20 +995,16 @@ class QuestionEditView extends Backbone.View
   
   destroy: (e) =>
     e.preventDefault()
-    # console.log 10
     @model.collection.trigger 'close'
     @model.destroy() 
   
   save: (event) =>
     event?.preventDefault?()
-    # console.log 'save'
     @persist()
     if @model.get('content').length > 0
-      # console.log 'has content'
       @close()
       @model.collection.trigger 'close'
     else
-      # console.log "doesn't have content"
       @render()
   
   edit: ->
@@ -1208,7 +1082,6 @@ class QuestionEditView extends Backbone.View
     checkAnswers = if type is 3 then arrayAnswers
     
     _.extend @model.toJSON(), {@isOpen, types, textAnswers, checkAnswers, radioAnswers, icon: @icons[type]}
-  
   
   render: ->
     @$el.html @template.render @data()
@@ -1334,7 +1207,6 @@ class QuestionView extends Backbone.View
     $.when(@model.getResults()).then (results) =>
       data = _.extend(@data(), {results: results})
       @$el.html @template().render data
-    # @$el.html @template.render @data()
     @
   
 
@@ -1360,7 +1232,6 @@ class SurveyShowView extends CollectionView
     @$el.html @template.render @model.toJSON()
     @$collection = @$('#questions')
     super
-    # console.log '@$collection', @$collection
     @
 
 class SurveyEditView extends CollectionView
@@ -1426,7 +1297,6 @@ class SurveyEditView extends CollectionView
     'click #survey-submit': 'publish'
   
   onSetTitle: =>
-    # console.log 'on set ttitle'
     collection = window.app.Surveys
     unless collection.include @model
       collection.add @model
@@ -1437,26 +1307,18 @@ class SurveyEditView extends CollectionView
   
   publish: (e) =>
     e?.preventDefault()
-    # console.log 'publish'
     @model.save()
-    # @$('#survey-submit').button()
-    
     button = @$('#survey-submit')
-    # console.log 'survey submit', button
-    
-    # @$('#survey-submit').button('toggle')
-    @$('#survey-submit').addClass('disabled')
+    button.addClass('disabled')
   
   destroy: (e) =>
     e.preventDefault()
-    # console.log 'destroy'
     @model.destroy()
     $.when(@collection).then (collection) =>
       collection.remove @model
       app.navigate '/surveys', true
     
   createQuestion: =>
-    #kot
     $.when(@collection).then (collection) =>
       position = collection.newPosition()
       console.log 'new position for question', position
@@ -1553,11 +1415,9 @@ class ElementView extends View
     'click .destroy-button': 'destroy'
     'click .up-button': 'up'
     'click .down-button': 'down'
-    # 'change .image-input': 'onImageChange'
   
   up: (event) ->
     event.preventDefault()
-    # console.log 'up'
     sortedAbove = _(@model.collection.filter((model) => model.get('position') < @model.get('position'))).sortBy((m) -> m.get('position'))
     if sortedAbove.length > 0
       swapWith = _(sortedAbove).last()
@@ -1570,7 +1430,6 @@ class ElementView extends View
   
   down: (event) ->
     event.preventDefault()
-    # console.log 'down'
     sortedAbove = _(@model.collection.filter((model) => model.get('position') > @model.get('position'))).sortBy((m) -> m.get('position'))
     if sortedAbove.length > 0
       swapWith = _(sortedAbove).first()
@@ -1583,7 +1442,6 @@ class ElementView extends View
   
   initialize: ->
     super
-    # @model.on 'change', @render, @
     @model.on 'sync', @onSync, @
     @model.on 'change', @render, @
     @model.on 'error', @onError, @
@@ -1605,18 +1463,12 @@ class ElementView extends View
   save: (event) ->
     event.preventDefault()
     @persist()
-    # @$('.save-button').attr('disabled', 'disabled')
     @close()
-    # console.log 'after save'
-    
   
   destroy: (event) ->
     event.preventDefault()
-    # @model.collection?.sort()
-    # @model.collection?.remove @model
     @model.save is_deleted: true
     @close()
-    
   
   onSync: ->
     @close()
@@ -1633,7 +1485,6 @@ class ElementView extends View
     @render()
   
   render: ->
-    # console.log 'model render', @model.toJSON(), @model.changedAttributes()
     data = if @model.templateData? then @model.templateData() else @model.toJSON()
     @$el.html @template().render _.extend(data, {isOpen: @model.isOpen, hasChanged: @model.isWaiting()})
     @
@@ -1719,8 +1570,6 @@ class InformationElementView extends ElementView
     
   open: ->
     super
-    # if @model.get('type') is 'image'
-      # @$('input[type=file]').click()
 
 class SortableCollectionView extends CollectionView
   
@@ -1733,7 +1582,6 @@ class SortableCollectionView extends CollectionView
     collection.sort()
     
   sort: (event) =>
-    # console.log 'sort stop', event
     $.when(@collection).then (collection) =>      
       @$('.sortable').each (index, element) =>
         # console.log '.sortable', element
@@ -1781,11 +1629,8 @@ class GroupShowView extends SortableCollectionView
 
   destroy: ->
     @model.save({is_deleted: true})
-    # @model.collection.remove @model
-    # console.log 'before sort', @model.collection.pluck('position')
     @model.collection.sort()
     @model.collection?.remove @model
-    # console.log 'after sort', @model.collection.pluck('position')
     app.navigate @navigateToAfterDelete, true
   
   template: -> """
@@ -1969,7 +1814,6 @@ class ContactElementView extends InformationElementView
   persist: ->
     @model.set key: @$('.key').val(), value: @$('.value').val()
     @model.save()
-    # console.log 'save'
 
 class ContactGroupShowView extends GroupShowView
 
@@ -2095,7 +1939,6 @@ class PlaceShowView extends Backbone.View
   
   save: (e) =>
     e.preventDefault()
-    # console.log 'save'
     attributes =
       name: @$('.input-title').val()
       description: @$('.input-description').val()
@@ -2106,7 +1949,6 @@ class PlaceShowView extends Backbone.View
   
   destroy: (e) =>
     e.preventDefault()
-    # console.log 'destroy'
     @model.set is_deleted: true
     @trigger 'destroy', @model
   
@@ -2130,20 +1972,6 @@ class RestaurantUser extends StackMob.User
   isWaiting: ->
     @meta.waiting
     false
-  
-  # destroyMe: (options) ->
-  #   options = _.extend {success: (->), error: (->)}, options
-  #   {success, error} = options
-  #   @set({is_deleted: true})
-  #   @save {}
-  #   , success: =>
-  #     success(@)
-  #     @trigger 'destroy'
-  #     @meta.waiting = false
-  #   , error: (event, model) =>
-  #     @meta.waiting = false
-  #     alert 'Nie udało się usunąć użytkownika restaracji. Próbuj ponownie.'
-  #     error(event, model)
   
   destroyWithDependencies: (options) ->
     options = _.extend {success: (->), error: (->)}, options
@@ -2186,7 +2014,6 @@ class RestaurantUserView extends SelectableView
     super
     @model.on 'sync', @render, @
     @model.on 'change', @render, @
-    # @model.on 'all', (event) => console.log 'event', event
 
 class RestaurantUserShowView extends Backbone.View
   labelAttribute: 'username'
@@ -2256,7 +2083,6 @@ class RestaurantUserShowView extends Backbone.View
   
   save: (e) =>
     e.preventDefault()
-    # console.log 'save'
     
     if @model.isNew()
       username = @$('.input-title').val()
@@ -2266,10 +2092,6 @@ class RestaurantUserShowView extends Backbone.View
         return
     else
       username = @model.get('username')
-      # oldPassword = @$('.input-password-old').val()
-      # alert('Musisz podać stare hasło')
-      # @$('.input-password-old').focus()
-      # return
       
     password = @$('.input-password').val()
     unless password
@@ -2289,7 +2111,6 @@ class RestaurantUserShowView extends Backbone.View
   destroy: (e) =>
     e.preventDefault()
     @model.destroyWithDependencies()
-    # @trigger 'destroy', @model
   
   render: =>
     @$el.html @template().render @model.toJSON()
@@ -2370,8 +2191,6 @@ class App extends Backbone.Router
     model = new Survey()
     collection = @Surveys
     collection.active = model
-    # $.when(@Surveys.load()).then (collection) =>
-    #   collection.add model
     mainView = new SurveyEditView({model})
     listView = new CollectionView({collection, itemView: SurveyView, active: model})
     view = new SidebarLayout({title: 'Ankiety', backLink: '#/surveys', mainView, listView})
@@ -2382,19 +2201,14 @@ class App extends Backbone.Router
   showSurvey: (model) => 
     window.model = model 
     collection = @Surveys
-    # console.log 'showSurvey', model
     mainView = if model.id? then new SurveyShowView({model}) else new SurveyEditView({model})
     listView = new CollectionView({collection, itemView: SurveyView})
     view = new SidebarLayout({title: 'Ankiety', backLink: '#/surveys', mainView, listView})
     @setView view
-    # @Surveys.load()
-    # model.getQuestions()
   
   showSurveyById: (id) =>
-    # console.log 'showSurveyById', id
     $.when(@Surveys.load()).then (collection) =>
       model = collection.get(id) or collection.getByCid(id)
-      # console.log 'showSurveyById', model
       if model?
         @showSurvey model
       else
@@ -2411,14 +2225,10 @@ class App extends Backbone.Router
           window.model = model = collection.createNew()
           collection.add model
           model.save {}, success: =>
-            # mainView = new InformationGroupShowView({model})
-            # view = new SidebarLayout({title: 'Informacje', backLink: '#/informations', mainView, listView})
-            # @setView view
             @navigate "/informations/#{model.id}", true
       else
         $.when(collection.load()).then (collection) =>
           if window.model = model = collection.get(id)
-            # console.log 'existing information', model
             mainView = new InformationGroupShowView({model})
             view = new SidebarLayout({title: 'Informacje', backLink: '#/informations', mainView, listView})
             @setView view
@@ -2430,7 +2240,6 @@ class App extends Backbone.Router
       addView.on 'click', =>
         @navigate('informations/new', true)
       view = new MenuLayout({title: 'Informacje', listView, addView})
-      # console.log 'info'
       @setView view
       $.when(collection.load()).then =>
         @updateLinks()
@@ -2483,7 +2292,6 @@ class App extends Backbone.Router
     else if id? # pokaż dany element
       $.when(collection.load()).then (collection) =>
         if model = collection.get(id)
-          # console.log 'existing place', model
           mainView = new PlaceShowView({model})
           mainView.on 'save', (model) =>
             model.save()
@@ -2529,8 +2337,6 @@ class App extends Backbone.Router
       mainView.on 'save', (model) =>
         collection.create model
       mainView.on 'destroy', (model) =>
-        #TODO delete restaurant as well
-        # model.destroy()
         @navigate path, true
       model.on 'sync', =>
         @navigate "#{path}/#{model.id.toURL()}", true
@@ -2542,18 +2348,10 @@ class App extends Backbone.Router
           mainView.on 'save', (model, username, password) =>
             model.destroy success: =>
               collection.create {username, password}, success: =>
-                # console.log 'after creation'
                 @navigate "#{path}/#{model.id.toURL()}", true
           mainView.on 'destroy', (model) =>
-            # collection.remove model
-            # model.destroy()
             @navigate path, true
             console.log 'mainView.on destroy', model, @RestaurantUsers
-            #TODO usunięcie restauracji
-            # $.when(@RestaurantUser.load()).then (restaurants) =>
-            #               if restaurant = restaurants.find((r) -> r.get('name') is model.id)
-            #                 restaurant.save({is_deleted: true})
-            
           view = new SidebarLayout({title, backLink: "##{path}", mainView, listView})
           @setView view
         else
@@ -2645,11 +2443,6 @@ class MenuItem extends ModelWithImage
   initialize: ->
     super
     @on 'all', (event) => console.log 'event', event, @
-  
-  # defaults:
-  #   image_url: '/img/menu-item.png'
-  #   image_width: 88
-  #   image_height: 88
 
 class MenuItems extends Collection
   model: MenuItem
@@ -2821,19 +2614,13 @@ class RestaurantMenuItemView extends View
     @remove()
     @collection.remove @model
   
-  # initialize: ->
-  #   super
-  #   @model.on 'save', @render
-  
   render: =>
-    # console.log 'is_featured', @model.get('is_featured')
     @$el.html @template().render @model.toJSON()
     @$('section').toggleClass('waiting', @model.meta.waiting)
     if @model.meta.editMode or not @model.get('name')
       @$('section').addClass('active')
     else
       @$('section').removeClass('active')
-    # @$('section').toggleClass('active', not @model.meta.editMode)
     @
 
 class RestaurantView extends CollectionView
@@ -2951,26 +2738,21 @@ class RestaurantView extends CollectionView
     'change .restaurant-input-image': 'onImageChange'
   
   save: (e) =>
-    # console.log 'save'
     @$('.restaurant-form-section').addClass('waiting')    
     e.preventDefault()
-    # console.log 'save'
     @model.set
       address: @$('.input-address').val()
       phone: @$('.input-phone').val()
       url: @$('.input-url').val()
-    # @model.beforeSave()
     @model.save()
   
   create: (e) =>
     e.preventDefault()
-    # console.log '@collection', @collection
     @collection.add new MenuItem
   
   render: =>
     @$el.html @template().render @model.toJSON()
     @$collection = @$('#menu')
-    # console.log @$collection
     super
   
 $ ->
@@ -3005,7 +2787,6 @@ $ ->
       $('body').html loginView.render().el
       loginView.on 'login', (user) ->
         window.globals.current_user = user.get('username')
-        # console.log 'login', user
         user.fetch success: =>
           if user.get('role') is "restaurant"
             id = user.id

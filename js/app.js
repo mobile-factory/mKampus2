@@ -478,8 +478,6 @@
     View.prototype.onImageChange = function(e) {
       var file, fileContent, reader,
         _this = this;
-      console.log('on image change');
-      console.log('image_preview', this.getImagePreview());
       e.stopPropagation();
       e.preventDefault();
       file = e.target.files[0];
@@ -492,7 +490,6 @@
           var base64Content, fileName, fileType, height, width;
           width = $image[0].clientWidth;
           height = $image[0].clientHeight;
-          console.log('WH after', width, height);
           _this.model.set({
             image_width: width,
             image_height: height
@@ -1789,7 +1786,7 @@
       }
       this.model.save();
       button = this.$('#survey-submit');
-      return this.$('#survey-submit').addClass('disabled');
+      return button.addClass('disabled');
     };
 
     SurveyEditView.prototype.destroy = function(e) {

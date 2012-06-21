@@ -890,8 +890,8 @@ class Question extends Model
           avg = if contents.length is 0
             0
           else
-            sum = _(contents).reduce(((memo, element) -> memo + Number(element)), 0)
-            sum / contents.length
+            sum = _(contents).reduce(((memo, element) -> memo + Number(element)-1), 0)
+            Math.round((sum / contents.length)*25)
           # console.log 'rate', avg, @get('content')
           avg * 20
         when '4' #text
@@ -1233,7 +1233,7 @@ class QuestionView extends Backbone.View
           <div class="row-fluid">
             <div class="span10">
               <div class="progress">
-                <div class="bar" style="width: {{this}}%;"></div>
+                <div class="bar" style="width: {{ this }}%;"></div>
               </div>
             </div>
             <div class="span2">
@@ -1245,7 +1245,7 @@ class QuestionView extends Backbone.View
       """ # rate
     '2': -> """
       {{#results}}
-        <div class="span8 item">
+        <div class="span4 item">
           <label class="radio">
             <input type="radio" disabled="disabled" />
             {{ name }}
@@ -1256,7 +1256,7 @@ class QuestionView extends Backbone.View
       """ # radio
     '3': -> """
       {{#results}}
-        <div class="span8 item">
+        <div class="span4 item">
           <label class="checkbox">
             <input type="checkbox" disabled="disabled" />
             {{ name }}
@@ -2219,7 +2219,6 @@ class RestaurantUserShowView extends Backbone.View
           <div class="controls"><input type="password" class="span12 input-password-confirmation"/></div>
         </div>
         
-        
       </div>
     </section>
       
@@ -2586,22 +2585,46 @@ class App extends Backbone.Router
       $el.toggleClass 'active', $el.data('id') is id
 
 ############################### Restaurant Router ###############################
-  
 
 class Restaurant extends ModelWithImage
   schemaName: 'restaurant'
+  
+  destroyMenu: (options) ->
+    options or= {}
+    options.success or= ->
+    options.error or= ->
+    {success, error} = options
+    
+    new MenuItems().getByRestaurantId @id, (e, collection) ->
+      if e
+        error(e)
+      else
+        itemsNumber = collection.length
+        success() if itemsNumber is 0
+        deletedItemsNumber = 0 
+        collection.each (model) ->
+          model.destroy
+            success: ->
+              deletedItemsNumber += 1
+              if deletedItemsNumber is itemsNumber
+                success()
+            error: error
   
   destroyWithDependencies: (options) ->
     options or= {}
     options.success or= ->
     options.error or= ->
     {success, error} = options
-    @set is_deleted: true
-    @save {}
-    , success: =>
-      success(@)
-      @trigger 'destroy'
-    , error: error
+    
+    @destroyMenu
+      success: =>    
+        @set is_deleted: true
+        @save {}
+        , success: =>
+          success(@)
+          @trigger 'destroy'
+        , error: error
+      error: error
 
 class Restaurants extends LoadableCollection
   model: Restaurant

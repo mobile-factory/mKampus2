@@ -1191,8 +1191,8 @@
           switch (this.get('type')) {
             case '1':
               avg = contents.length === 0 ? 0 : (sum = _(contents).reduce((function(memo, element) {
-                return memo + Number(element);
-              }), 0), sum / contents.length);
+                return memo + Number(element) - 1;
+              }), 0), Math.round((sum / contents.length) * 25));
               return avg * 20;
             case '4':
               return contents;
@@ -1586,13 +1586,13 @@
 
     QuestionView.prototype.typeTemplates = {
       '1': function() {
-        return "{{#results}}\n  <div class=\"span8 item\">\n    <div class=\"row-fluid\">\n      <div class=\"span10\">\n        <div class=\"progress\">\n          <div class=\"bar\" style=\"width: {{this}}%;\"></div>\n        </div>\n      </div>\n      <div class=\"span2\">\n        <span class=\"badge\">{{ this }} %</span>\n      </div>\n    </div>\n  </div>\n{{/results}}";
+        return "{{#results}}\n  <div class=\"span8 item\">\n    <div class=\"row-fluid\">\n      <div class=\"span10\">\n        <div class=\"progress\">\n          <div class=\"bar\" style=\"width: {{ this }}%;\"></div>\n        </div>\n      </div>\n      <div class=\"span2\">\n        <span class=\"badge\">{{ this }} %</span>\n      </div>\n    </div>\n  </div>\n{{/results}}";
       },
       '2': function() {
-        return "{{#results}}\n  <div class=\"span8 item\">\n    <label class=\"radio\">\n      <input type=\"radio\" disabled=\"disabled\" />\n      {{ name }}\n      <span class=\"badge\">{{ votes }}</span>\n    </label>\n  </div>\n{{/results}}";
+        return "{{#results}}\n  <div class=\"span4 item\">\n    <label class=\"radio\">\n      <input type=\"radio\" disabled=\"disabled\" />\n      {{ name }}\n      <span class=\"badge\">{{ votes }}</span>\n    </label>\n  </div>\n{{/results}}";
       },
       '3': function() {
-        return "{{#results}}\n  <div class=\"span8 item\">\n    <label class=\"checkbox\">\n      <input type=\"checkbox\" disabled=\"disabled\" />\n      {{ name }}\n      <span class=\"badge\">{{ votes }}</span>\n    </label>\n  </div>\n{{/results}}";
+        return "{{#results}}\n  <div class=\"span4 item\">\n    <label class=\"checkbox\">\n      <input type=\"checkbox\" disabled=\"disabled\" />\n      {{ name }}\n      <span class=\"badge\">{{ votes }}</span>\n    </label>\n  </div>\n{{/results}}";
       },
       '4': function() {
         return "{{#results}}\n  <div class=\"span8 item\">\n    {{ this }}\n  </div>\n{{/results}}";
@@ -2976,7 +2976,7 @@
     RestaurantUserShowView.prototype.titlePlaceholder = 'Nazwa nowej restauracji';
 
     RestaurantUserShowView.prototype.template = function() {
-      return "<div id=\"title-section\">\n  <div class=\"add-section\">\n    <input type=\"text\" class=\"input-title add edit\" {{#if " + this.labelAttribute + " }}disabled{{/if}} placeholder=\"" + this.titlePlaceholder + "\" autofocus=\"autofocus\" value=\"{{ " + this.labelAttribute + " }}\"/>\n  </div>\n</div>\n\n<section class=\"item row-fluid\">\n  <div class=\"span12 form-horizontal\">\n    <legend>\n      Dedykowany użytkownik\n      <small>mogący aktualizować dane teleadresowe i menu</small>\n    </legend>\n    <div class=\"control-group\">\n      <label for=\"\" class=\"control-label\">Identyfikator</label>\n      <div class=\"controls\"><input type=\"text\" disabled class=\"span12 input-username\" value=\"{{ " + this.labelAttribute + " }}\"/></div>\n    </div>\n    \n    <div class=\"control-group\">\n      <label for=\"\" class=\"control-label\">Hasło</label>\n      <div class=\"controls\"><input type=\"password\" class=\"span12 input-password\"/></div>\n    </div>\n  \n    <div class=\"control-group\">\n      <label for=\"\" class=\"control-label\">Hasło ponownie</label>\n      <div class=\"controls\"><input type=\"password\" class=\"span12 input-password-confirmation\"/></div>\n    </div>\n    \n    \n  </div>\n</section>\n  \n<div class=\"form-actions section\">\n  \n  <button class=\"destroy btn btn-large\">\n    <i class=\"icon-remove\"></i>\n    Usuń\n  </button>\n  \n  <button class=\"save btn btn-large btn-primary pull-right\">\n    <i class=\"icon-ok icon-white\"></i>\n    Zapisz\n  </button>\n</div>";
+      return "<div id=\"title-section\">\n  <div class=\"add-section\">\n    <input type=\"text\" class=\"input-title add edit\" {{#if " + this.labelAttribute + " }}disabled{{/if}} placeholder=\"" + this.titlePlaceholder + "\" autofocus=\"autofocus\" value=\"{{ " + this.labelAttribute + " }}\"/>\n  </div>\n</div>\n\n<section class=\"item row-fluid\">\n  <div class=\"span12 form-horizontal\">\n    <legend>\n      Dedykowany użytkownik\n      <small>mogący aktualizować dane teleadresowe i menu</small>\n    </legend>\n    <div class=\"control-group\">\n      <label for=\"\" class=\"control-label\">Identyfikator</label>\n      <div class=\"controls\"><input type=\"text\" disabled class=\"span12 input-username\" value=\"{{ " + this.labelAttribute + " }}\"/></div>\n    </div>\n    \n    <div class=\"control-group\">\n      <label for=\"\" class=\"control-label\">Hasło</label>\n      <div class=\"controls\"><input type=\"password\" class=\"span12 input-password\"/></div>\n    </div>\n  \n    <div class=\"control-group\">\n      <label for=\"\" class=\"control-label\">Hasło ponownie</label>\n      <div class=\"controls\"><input type=\"password\" class=\"span12 input-password-confirmation\"/></div>\n    </div>\n    \n  </div>\n</section>\n  \n<div class=\"form-actions section\">\n  \n  <button class=\"destroy btn btn-large\">\n    <i class=\"icon-remove\"></i>\n    Usuń\n  </button>\n  \n  <button class=\"save btn btn-large btn-primary pull-right\">\n    <i class=\"icon-ok icon-white\"></i>\n    Zapisz\n  </button>\n</div>";
     };
 
     RestaurantUserShowView.prototype.events = {
@@ -3541,6 +3541,37 @@
 
     Restaurant.prototype.schemaName = 'restaurant';
 
+    Restaurant.prototype.destroyMenu = function(options) {
+      var error, success;
+      options || (options = {});
+      options.success || (options.success = function() {});
+      options.error || (options.error = function() {});
+      success = options.success, error = options.error;
+      return new MenuItems().getByRestaurantId(this.id, function(e, collection) {
+        var deletedItemsNumber, itemsNumber;
+        if (e) {
+          return error(e);
+        } else {
+          itemsNumber = collection.length;
+          if (itemsNumber === 0) {
+            success();
+          }
+          deletedItemsNumber = 0;
+          return collection.each(function(model) {
+            return model.destroy({
+              success: function() {
+                deletedItemsNumber += 1;
+                if (deletedItemsNumber === itemsNumber) {
+                  return success();
+                }
+              },
+              error: error
+            });
+          });
+        }
+      });
+    };
+
     Restaurant.prototype.destroyWithDependencies = function(options) {
       var error, success,
         _this = this;
@@ -3548,13 +3579,18 @@
       options.success || (options.success = function() {});
       options.error || (options.error = function() {});
       success = options.success, error = options.error;
-      this.set({
-        is_deleted: true
-      });
-      return this.save({}, {
+      return this.destroyMenu({
         success: function() {
-          success(_this);
-          return _this.trigger('destroy');
+          _this.set({
+            is_deleted: true
+          });
+          return _this.save({}, {
+            success: function() {
+              success(_this);
+              return _this.trigger('destroy');
+            },
+            error: error
+          });
         },
         error: error
       });

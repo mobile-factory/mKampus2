@@ -2776,7 +2776,7 @@ $ ->
             $('body').html view.render().el
   
   bazylia = off
-  auth = on
+  auth = off
   
   if bazylia
     window.globals.current_user = "Bazylia"
@@ -2806,5 +2806,3 @@ m2 = new Image()
 m2.src = '/img/progress.gif'
 m3 = new Image()
 m3.src = '/img/waiting-active.png'
-
-######################### / Prefetching #########################
